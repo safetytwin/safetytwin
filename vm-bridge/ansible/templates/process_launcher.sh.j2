@@ -1,0 +1,19 @@
+#!/bin/bash
+# Skrypt wygenerowany automatycznie przez system cyfrowego bliźniaka
+# Proces: {{ item.name }} (PID: {{ item.pid }})
+# Uruchomiony dla użytkownika: {{ item.user | default('root') }}
+# Wygenerowany: {{ ansible_date_time.iso8601 }}
+
+# Ustaw zmienne środowiskowe
+{% if item.environment is defined %}
+{% for env in item.environment %}
+export {{ env }}
+{% endfor %}
+{% endif %}
+
+# Uruchom proces z taką samą linią poleceń jak oryginał
+{% if item.cmdline is defined and item.cmdline | length > 0 %}
+exec {{ item.cmdline | join(' ') }}
+{% else %}
+exec {{ item.name }}
+{% endif %}

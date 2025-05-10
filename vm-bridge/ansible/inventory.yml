@@ -1,0 +1,13 @@
+---
+# Przykładowy plik inwentarza dla Ansible
+# Ten plik jest generowany dynamicznie przez VM Bridge podczas aktualizacji stanu
+
+all:
+  hosts:
+    digital_twin:
+      ansible_host: "{{ vm_ip }}"
+      ansible_user: "{{ vm_user }}"
+  vars:
+    ansible_ssh_private_key_file: "{{ vm_key_path }}"
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_become: yes

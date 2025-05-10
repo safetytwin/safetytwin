@@ -19,6 +19,12 @@ vm-bridge/
 │   ├── models.py          # Modele danych
 │   ├── routes.py          # Definicje tras API
 │   └── run.py             # Skrypt uruchamiający API
+├── ansible/               # Pliki Ansible do konfiguracji VM
+│   ├── apply_services.yml # Główny playbook Ansible
+│   ├── inventory.yml      # Szablon pliku inwentarza
+│   └── templates/         # Szablony Jinja2 dla Ansible
+│       ├── process_launcher.sh.j2      # Szablon skryptu uruchamiającego proces
+│       └── process_service.service.j2  # Szablon usługi systemd
 ├── vm_bridge.py           # Główna klasa VMBridge
 ├── run_api.py             # Skrypt uruchamiający API
 └── requirements.txt       # Zależności projektu
@@ -193,3 +199,34 @@ curl -X POST http://localhost:5678/api/v1/snapshots/state_20230501_120000
 
 ```bash
 curl http://localhost:5678/api/v1/status
+```
+
+## Konfiguracja Ansible
+
+VM Bridge używa Ansible do aplikowania konfiguracji usług do maszyny wirtualnej. Proces ten jest automatycznie wykonywany po wykryciu zmian w stanie monitorowanego systemu.
+
+### Playbook Ansible
+
+Główny playbook Ansible (`ansible/apply_services.yml`) wykonuje następujące zadania:
+
+1. **Konfiguracja systemu** - ustawia hostname i zmienne środowiskowe
+2. **Zarządzanie usługami systemd** - uruchamia, zatrzymuje i konfiguruje usługi systemd
+3. **Zarządzanie kontenerami Docker** - tworzy, aktualizuje i usuwa kontenery Docker
+4. **Zarządzanie procesami** - tworzy usługi systemd dla niezależnych procesów
+
+### Szablony
+
+Playbook wykorzystuje dwa główne szablony:
+
+- **process_launcher.sh.j2** - generuje skrypty uruchamiające dla procesów
+- **process_service.service.j2** - tworzy pliki usług systemd dla procesów
+
+### Uruchamianie ręczne
+
+W razie potrzeby możesz ręcznie uruchomić playbook Ansible:
+
+```bash
+ansible-playbook -i /path/to/inventory.yml /path/to/apply_services.yml -e "config_file=/path/to/service_config.yaml"
+```
+
+Zwykle jednak VM Bridge automatycznie wywołuje playbook podczas aktualizacji stanu.

@@ -1,0 +1,9 @@
+{
+  "interval": 10,
+  "bridge_url": "http://localhost:5678/api/v1/update_state",
+  "log_file": "/var/log/digital-twin-agent.log",
+  "state_dir": "/var/lib/digital-twin/states",
+  "include_processes": true,
+  "include_network": true,
+  "verbose": false
+}
