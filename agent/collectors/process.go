@@ -1,0 +1,1 @@
+# Kolektor informacji o procesach

@@ -1,0 +1,5 @@
+# Zarządzanie konfiguracją
+"""
+config.py
+"""
+

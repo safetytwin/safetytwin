@@ -1,0 +1,1 @@
+# Model informacji o usługach
