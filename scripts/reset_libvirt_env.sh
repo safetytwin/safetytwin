@@ -1,0 +1,70 @@
+#!/bin/bash
+# reset_libvirt_env.sh - Remove all libvirt VMs, storage pools, and networks, then recreate the environment and restart services
+# WARNING: This script will irreversibly delete all VMs and related resources managed by libvirt!
+
+set -e
+
+LOG=/tmp/reset_libvirt_env.log
+
+function log() {
+    echo "[$(date)] $1" | tee -a "$LOG"
+}
+
+log "Shutting down all running VMs..."
+for vm in $(virsh list --name); do
+    log "Shutting down $vm..."
+    virsh destroy "$vm"
+done
+
+log "Undefining all VMs..."
+for vm in $(virsh list --all --name); do
+    log "Checking for snapshots for $vm..."
+    SNAPSHOTS=$(virsh snapshot-list --name "$vm")
+    for snap in $SNAPSHOTS; do
+        if [ -n "$snap" ] && [ "$snap" != "-" ]; then
+            log "Deleting snapshot $snap for $vm..."
+            virsh snapshot-delete "$vm" --snapshotname "$snap" || log "Warning: failed to delete snapshot $snap for $vm"
+        fi
+    done
+    log "Undefining $vm..."
+    virsh undefine --remove-all-storage "$vm" || log "Warning: failed to undefine $vm"
+    # Clean up orphaned cloud-init ISO if present
+    ISO_PATH="/var/lib/safetytwin/cloud-init/cloud-init.iso"
+    if [ -f "$ISO_PATH" ]; then
+        log "Removing orphaned ISO: $ISO_PATH"
+        rm -f "$ISO_PATH"
+    fi
+done
+
+log "Removing all storage pools..."
+for pool in $(virsh pool-list --all --name); do
+    log "Destroying pool $pool..."
+    virsh pool-destroy "$pool" || true
+    log "Undefining pool $pool..."
+    virsh pool-undefine "$pool" || true
+done
+
+log "Removing all networks..."
+for net in $(virsh net-list --all --name); do
+    log "Destroying network $net..."
+    virsh net-destroy "$net" || true
+    log "Undefining network $net..."
+    virsh net-undefine "$net" || true
+done
+
+log "Environment cleaned. Recreating default network and pool..."
+virsh net-define /usr/share/libvirt/networks/default.xml || true
+virsh net-autostart default || true
+virsh net-start default || true
+virsh pool-define-as default dir - - - - /var/lib/libvirt/images || true
+virsh pool-autostart default || true
+virsh pool-start default || true
+
+log "Recreating SafetyTwin environment (VMs, etc)..."
+bash /home/tom/gitlab/safetytwin/safetytwin/scripts/create-vm.sh | tee -a "$LOG"
+
+log "Restarting orchestrator and agent services..."
+sudo systemctl restart orchestrator.service
+sudo systemctl restart agent_send_state.service
+
+log "Environment reset and services restarted."

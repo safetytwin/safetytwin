@@ -20,6 +20,79 @@
 
 ---
 
+## 🧹 Resetowanie i Rekreacja Środowiska (Automatyczne czyszczenie VM/libvirt)
+
+Aby całkowicie wyczyścić środowisko (usuwając wszystkie maszyny wirtualne, snapshoty, pule storage i sieci libvirt) oraz zbudować je od nowa:
+
+```bash
+bash scripts/reset_libvirt_env.sh
+```
+
+- Skrypt:
+  - Usuwa wszystkie snapshoty każdej VM przed próbą usunięcia domeny (pełna automatyzacja, nie trzeba ręcznie kasować snapshotów!)
+  - Usuwa wszystkie maszyny, pule storage i sieci
+  - Odtwarza domyślną sieć/pulę
+  - Automatycznie wywołuje `create-vm.sh` do odbudowy środowiska SafetyTwin
+  - Restartuje kluczowe usługi systemd (`orchestrator.service`, `agent_send_state.service`)
+  - Loguje wszystkie kroki do `/tmp/reset_libvirt_env.log`
+
+**Uwaga:** Jeśli pojawi się błąd o pliku ISO cloud-init, usuń go ręcznie:
+```bash
+rm -f /var/lib/safetytwin/cloud-init/cloud-init.iso
+```
+
+---
+
+## ⚙️ Automatyzacja usług i timerów systemd
+
+Aby dodać nową usługę lub timer systemd (np. cykliczne sprawdzanie SSH do VM):
+
+1. Edytuj `scripts/generate_services.py` i dodaj słownik do listy `SERVICES`:
+
+```python
+{
+    'filename': 'ssh_vm_check.service',
+    'DESCRIPTION': 'Periodic SSH VM Connectivity Check',
+    'TYPE': 'oneshot',
+    'USER': 'root',
+    'WORKDIR': '/ścieżka/do/projektu',
+    'EXECSTART': '/bin/bash ${WORKDIR}/ssh_vm_check.sh',
+    'RESTART': 'no',
+    'timer': {
+        'filename': 'ssh_vm_check.timer',
+        'DESCRIPTION': 'Periodic SSH VM Connectivity Check',
+        'ON_BOOT_SEC': '1min',
+        'ON_ACTIVE_SEC': '5min',
+        'UNIT': 'ssh_vm_check.service',
+    },
+},
+```
+
+2. Uruchom:
+```bash
+bash scripts/update_services.sh
+```
+
+3. Włącz i uruchom timer:
+```bash
+sudo systemctl enable --now ssh_vm_check.timer
+```
+
+---
+
+## 🔑 Uwierzytelnianie do VM (.env)
+
+Dane logowania do maszyn wirtualnych pobierane są z pliku `.env`:
+
+```
+VM_USER=ubuntu
+VM_PASS=ubuntu
+```
+
+Upewnij się, że hasło użytkownika na VM odpowiada wartości z `.env` oraz że SSH pozwala na logowanie hasłem (`PasswordAuthentication yes`).
+
+---
+
 ## 🆕 Nowości 2025-05
 
 - **Webowy shell do VM:**

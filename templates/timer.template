@@ -1,0 +1,10 @@
+[Unit]
+Description=${DESCRIPTION}
+
+[Timer]
+OnBootSec=${ON_BOOT_SEC}
+OnUnitActiveSec=${ON_ACTIVE_SEC}
+Unit=${UNIT}
+
+[Install]
+WantedBy=timers.target

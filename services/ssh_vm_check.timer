@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic SSH VM Connectivity Check
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=ssh_vm_check.service
+
+[Install]
+WantedBy=timers.target

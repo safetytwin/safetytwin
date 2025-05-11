@@ -114,6 +114,16 @@ check_root() {
 
 # Sprawdź wymagania systemowe
 check_requirements() {
+  # Instalacja gotty (terminal webowy)
+  if ! command -v gotty >/dev/null 2>&1; then
+    log "Instaluję gotty (web terminal)..."
+    GOTTY_VERSION="1.4.0"
+    wget -qO- "https://github.com/yudai/gotty/releases/download/v${GOTTY_VERSION}/gotty_linux_amd64.tar.gz" | tar xz
+    sudo mv gotty /usr/local/bin/
+    sudo chmod +x /usr/local/bin/gotty
+    log_success "Zainstalowano gotty."
+  fi
+
   log "Sprawdzanie wymagań systemowych..."
 
   # Sprawdź, czy procesor wspiera wirtualizację
@@ -861,6 +871,16 @@ check_root() {
 
 # Sprawdź wymagania systemowe
 check_requirements() {
+  # Instalacja gotty (terminal webowy)
+  if ! command -v gotty >/dev/null 2>&1; then
+    log "Instaluję gotty (web terminal)..."
+    GOTTY_VERSION="1.4.0"
+    wget -qO- "https://github.com/yudai/gotty/releases/download/v${GOTTY_VERSION}/gotty_linux_amd64.tar.gz" | tar xz
+    sudo mv gotty /usr/local/bin/
+    sudo chmod +x /usr/local/bin/gotty
+    log_success "Zainstalowano gotty."
+  fi
+
   log "Sprawdzanie wymagań systemowych..."
 
   # Sprawdź, czy procesor wspiera wirtualizację

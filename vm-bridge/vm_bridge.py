@@ -23,7 +23,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/var/log/vm-bridge.log')
+        logging.FileHandler('/tmp/vm-bridge.log')
     ]
 )
 logger = logging.getLogger("vm-bridge")

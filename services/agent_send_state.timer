@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic SafetyTwin Agent State Sender
+
+[Timer]
+OnBootSec=10
+OnUnitActiveSec=10s
+Unit=agent_send_state.service
+
+[Install]
+WantedBy=timers.target

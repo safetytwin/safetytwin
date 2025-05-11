@@ -12,7 +12,8 @@ from datetime import datetime
 from flask import Flask, request, jsonify, Response, Blueprint
 
 # Dodaj katalog główny do ścieżki, aby można było importować moduły
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# Ensure parent directory is in sys.path for module imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Informacje o wersji
 __version__ = '1.0.0'
@@ -339,3 +340,26 @@ def create_app(vm_mgr, state_str, service_gen):
         return Response(html, mimetype='text/html')
 
     return app
+
+import sys
+sys.path.insert(0, '/home/tom/gitlab/safetytwin/safetytwin/vm-bridge')
+sys.path.insert(0, '/home/tom/gitlab/safetytwin/safetytwin/scripts')
+from generate_services import render_service
+
+class ServiceGenerator:
+    def generate_service_config(self, state_data):
+        # You may need to adapt this to actually use state_data if render_service needs it
+        return render_service(state_data)
+
+if __name__ == "__main__":
+    from vm_bridge import VMBridge
+    from utils.state_store import StateStore
+
+    vm_name = os.environ.get("VM_NAME", "safetytwin-vm")
+    vm_mgr = VMBridge(vm_name=vm_name)
+    state_dir = os.environ.get("STATE_DIR", "/tmp/vm_state")
+    state_str = StateStore(state_dir=state_dir)
+    service_gen = ServiceGenerator()
+
+    app = create_app(vm_mgr, state_str, service_gen)
+    app.run(host="0.0.0.0", port=5000, debug=True)
