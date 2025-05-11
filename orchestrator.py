@@ -76,7 +76,20 @@ def list_vms():
         for line in out.splitlines()[2:]:
             parts = line.strip().split()
             if len(parts) >= 2:
-                vms.append(parts[1])
+                vm_name = parts[1]
+                ip = None
+                # Try to get the IP address using virsh domifaddr
+                try:
+                    ip_out = subprocess.check_output(['virsh', 'domifaddr', vm_name], encoding='utf-8', errors='ignore')
+                    for ip_line in ip_out.splitlines()[2:]:
+                        ip_parts = ip_line.strip().split()
+                        # Usually the IP is in the 4th column (Address)
+                        if len(ip_parts) >= 4 and ip_parts[3].count('.') == 3:
+                            ip = ip_parts[3].split('/')[0]
+                            break
+                except Exception:
+                    ip = None
+                vms.append({'name': vm_name, 'ip': ip})
     except Exception as e:
         return {"vms": [], "error": str(e)}
     return {"vms": vms}
