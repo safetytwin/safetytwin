@@ -2,6 +2,7 @@
 venv
 .venv
 .env
+summary.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

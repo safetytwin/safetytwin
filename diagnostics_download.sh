@@ -151,55 +151,7 @@ if [ -n "$LATEST_LOG" ]; then
 else
     log_warning "No diagnostics log found on the VM."
 fi
-  echo -e "\nDisk I/O Stats:"
-  iostat 2>/dev/null || echo "iostat not available"
-  echo -e "\nVMStat:"
-  vmstat 2>/dev/null || echo "vmstat not available"
-) | tee "$PERFORMANCE_LOG"
-echo "Full performance information saved to $PERFORMANCE_LOG"
-separator
-
-# Extract relevant system logs
-echo -e "${BLUE}System Logs:${NC}"
-(
-  echo "=== SYSTEM LOGS EXTRACT ==="
-  echo "Date: $(date)"
-  echo -e "\nJournal Logs (Last 100 lines):"
-  journalctl -n 100 --no-pager
-  echo -e "\nJournal Errors:"
-  journalctl -p err --no-pager | tail -100
-  echo -e "\nSyslog Entries (Last 100 lines):"
-  tail -100 /var/log/syslog 2>/dev/null || echo "No syslog file found"
-  echo -e "\nDmesg Output:"
-  dmesg | tail -100
-  echo -e "\nBoot Log:"
-  journalctl -b --no-pager | head -100
-  echo -e "\nCloud-Init Log (Last 100 lines):"
-  tail -100 /var/log/cloud-init.log 2>/dev/null || echo "No cloud-init.log found"
-  echo -e "\nCloud-Init Output Log (Last 100 lines):"
-  tail -100 /var/log/cloud-init-output.log 2>/dev/null || echo "No cloud-init-output.log found"
-  echo -e "\nAuth Log (Last 50 lines):"
-  tail -50 /var/log/auth.log 2>/dev/null || echo "No auth.log found"
-) | tee "$SYSLOG_EXTRACT"
-echo "System logs saved to $SYSLOG_EXTRACT"
-
-# Save full dmesg output to a separate file
-dmesg > "$DMESG_LOG"
-echo "Full dmesg output saved to $DMESG_LOG"
-separator
-
-echo -e "${BLUE}============ END OF REPORT ============${NC}"
-echo "Main report saved to: $REPORT_FILE"
-echo "All diagnostic files are in /tmp/ with timestamp $TIMESTAMP"
-
-# List all created log files
-echo -e "\nCreated log files:"
-ls -la /tmp/*_$TIMESTAMP.log
-EOF
-
-# Copy the diagnostics script to the VM
-log "Transferring diagnostics script to VM..."
-sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 /tmp/diagnostics.sh "$VM_USER@$VM_IP:$REMOTE_DIAGNOSTIC_SCRIPT" || {
+sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 ./diagnostics.sh "$VM_USER@$VM_IP:$REMOTE_DIAGNOSTIC_SCRIPT" || {
     log_error "Failed to copy diagnostics script to VM."
     exit 1
 }
