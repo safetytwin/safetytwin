@@ -12,7 +12,9 @@ set -e
 VM_NAMES=("safetytwin-vm" "safetytwin-vm-2" "basic-test-vm")
 BASE_IMAGE="/var/lib/safetytwin/images/ubuntu-base.img"
 VM_IMAGE_DIR="/var/lib/safetytwin/images"
-CLOUD_INIT_ISO="/var/lib/safetytwin/cloud-init/cloud-init.iso"
+# Each VM will get its own cloud-init ISO
+CLOUD_INIT_DIR="/var/lib/safetytwin/cloud-init"
+
 VM_RAM=2048    # MB
 VM_VCPUS=2
 LOGFILE="/tmp/create-vm.log"
@@ -23,8 +25,20 @@ function log() {
 
 log "Starting multi-VM creation..."
 
+# Clean up old cloud-init ISOs and ensure directory exists
+mkdir -p "$CLOUD_INIT_DIR"
+rm -f "$CLOUD_INIT_DIR"/*.iso
+
 for VM in "${VM_NAMES[@]}"; do
     VM_IMAGE="${VM_IMAGE_DIR}/${VM}.qcow2"
+    CLOUD_INIT_ISO="$CLOUD_INIT_DIR/${VM}-cloud-init.iso"
+    CLOUD_INIT_CFG="$CLOUD_INIT_DIR/${VM}-cloud-init.cfg"
+    log "Creating cloud-init ISO for $VM..."
+    # You may want to generate a proper cloud-init config here. For now, create a minimal one if missing.
+    if [ ! -f "$CLOUD_INIT_CFG" ]; then
+        echo "#cloud-config\nhostname: $VM" > "$CLOUD_INIT_CFG"
+    fi
+    cloud-localds "$CLOUD_INIT_ISO" "$CLOUD_INIT_CFG"
     log "Creating image for $VM..."
     if [ ! -f "$BASE_IMAGE" ]; then
         log "ERROR: Base image $BASE_IMAGE not found. Aborting."
@@ -43,7 +57,9 @@ for VM in "${VM_NAMES[@]}"; do
         --disk path="$CLOUD_INIT_ISO",device=cdrom \
         --os-type linux --os-variant ubuntu22.04 \
         --network network=default \
-        --graphics none --noautoconsole --import || {
+        --graphics none --noautoconsole \
+        --console pty,target_type=serial --serial pty \
+        --import || {  # Add serial console for virsh console diagnostics
             log "ERROR: virt-install failed for $VM. Skipping."
             continue
         }

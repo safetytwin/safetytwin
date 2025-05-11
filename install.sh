@@ -78,9 +78,17 @@ ensure_gotty() {
   GOTTY_URL="https://github.com/yudai/gotty/releases/download/v$GOTTY_VERSION/gotty_linux_amd64.tar.gz"
   if ! command -v gotty &>/dev/null; then
     log_warning "gotty not found, installing..."
-    wget -O /tmp/gotty.tar.gz "$GOTTY_URL"
-    tar -xzf /tmp/gotty.tar.gz -C /tmp
-    sudo mv /tmp/gotty "$GOTTY_BIN"
+    TMP_GOTTY_ARCHIVE="/tmp/gotty.tar.gz"
+    echo "[INSTALL] Downloading gotty..."
+    wget -O "$TMP_GOTTY_ARCHIVE" "$GOTTY_URL" || { echo "[ERROR] Failed to download gotty."; exit 1; }
+    if tar -tzf "$TMP_GOTTY_ARCHIVE" &>/dev/null; then
+      tar xzf "$TMP_GOTTY_ARCHIVE" -C /opt/safetytwin
+      echo "[INSTALL] Gotty extracted successfully."
+    else
+      echo "[ERROR] Gotty archive is corrupted. Aborting install."; exit 1
+    fi
+    rm -f "$TMP_GOTTY_ARCHIVE"
+    sudo mv /opt/safetytwin/gotty "$GOTTY_BIN"
     sudo chmod +x "$GOTTY_BIN"
     log_success "gotty installed at $GOTTY_BIN"
   else
