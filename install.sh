@@ -64,6 +64,23 @@ check_requirements() {
     exit 1
   fi
 
+  # Instalacja narzędzi wymaganych przez skrypty diagnostyczne i narzędziowe
+  case "$DISTRO" in
+    ubuntu|debian)
+      log_info "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
+      sudo apt-get update
+      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep awk
+      # Napraw uprawnienia do katalogu cloud-init
+      if [ -d /var/lib/safetytwin/cloud-init ]; then
+        sudo chown -R root:root /var/lib/safetytwin/cloud-init
+        sudo chmod 700 /var/lib/safetytwin/cloud-init
+      fi
+      ;;
+    *)
+      log_warn "Nieznana dystrybucja: $DISTRO. Zainstaluj ręcznie: whois net-tools iproute2 cloud-utils expect lsof jq"
+      ;;
+  esac
+
   # Ustal menedżer pakietów i pakiety
   PKG_UPDATE=""
   PKG_INSTALL=""
@@ -610,7 +627,44 @@ EOF
 
 # Instalacja VM Bridge na VM
 install_vm_bridge_on_vm() {
-  log "Instalowanie VM Bridge na maszynie wirtualnej..."
+  log "[AUTO-FIX] Diagnostyka sieci VM..."
+  virsh domiflist safetytwin-vm || true
+  virsh net-list --all || true
+  virsh net-info default || true
+  cat /var/lib/libvirt/dnsmasq/default.leases || true
+  if ! virsh domiflist safetytwin-vm | grep -q default; then
+    log_info "[AUTO-FIX] VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
+    virsh detach-interface safetytwin-vm --type network --mac $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') --persistent || true
+    virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
+    log_info "[AUTO-FIX] Podłączono VM do sieci 'default'."
+  fi
+  if ! virsh net-info default | grep -q 'Active: yes'; then
+    log_info "[AUTO-FIX] Sieć 'default' nieaktywna. Próbuję uruchomić..."
+    virsh net-start default
+    virsh net-autostart default
+  fi
+  # Upewnij się, że user-data ma sekcję network
+  if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
+    log_info "[AUTO-FIX] Dodaję domyślną konfigurację sieci do user-data."
+    echo -e '\nnetwork:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true' >> /var/lib/safetytwin/cloud-init/user-data
+  fi
+  # Po naprawie próbuj ponownie uzyskać IP
+  sleep 5
+  IP_VM=$(cat /var/lib/libvirt/dnsmasq/default.leases | grep $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') | awk '{print $3}')
+  if [ -z "$IP_VM" ]; then
+    log_error "Nie można uzyskać adresu IP VM. Możesz uruchomić pełną diagnostykę sieci VM poleceniem:\n  bash diagnose-vm-network.sh\nWyślij wynik tego skryptu do wsparcia."
+    # Wyświetl skrócone instrukcje ręczne
+    echo "Ręczna diagnostyka:\n  sudo virsh domiflist safetytwin-vm\n  sudo virsh net-list --all\n  sudo virsh net-info default\n  sudo cat /var/lib/libvirt/dnsmasq/default.leases\n  sudo virsh console safetytwin-vm\n  sudo cat /var/lib/safetytwin/cloud-init/user-data"
+  else
+    log_info "[AUTO-FIX] VM ma adres IP: $IP_VM"
+  fi
+
+  VM_IP=$(virsh domifaddr "$DEFAULT_VM_NAME" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+
+  if [ -z "$VM_IP" ]; then
+    log_error "Nie można uzyskać adresu IP VM."
+    return 1
+  fi
 
   # Pobierz adres IP VM
   VM_IP=$(virsh domifaddr "$DEFAULT_VM_NAME" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)

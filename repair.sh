@@ -74,6 +74,70 @@ repair_vm() {
   else
     log_ok "VM uruchomiona."
   fi
+  # Diagnostyka sieci VM
+  log "[AUTO-FIX] Diagnostyka sieci VM..."
+  virsh domiflist safetytwin-vm || true
+  virsh net-list --all || true
+  virsh net-info default || true
+  cat /var/lib/libvirt/dnsmasq/default.leases || true
+  # Naprawa podłączenia do sieci
+  if ! virsh domiflist safetytwin-vm | grep -q default; then
+    log_warn "VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
+    virsh detach-interface safetytwin-vm --type network --mac $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') --persistent || true
+    virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
+    log_ok "Podłączono VM do sieci 'default'."
+  fi
+  if ! virsh net-info default | grep -q 'Active: yes'; then
+    log_warn "Sieć 'default' nieaktywna. Próbuję uruchomić..."
+    virsh net-start default
+    virsh net-autostart default
+  fi
+  # Naprawa user-data
+  if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
+    log_warn "Dodaję domyślną konfigurację sieci do user-data."
+    echo -e '\nnetwork:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true' >> /var/lib/safetytwin/cloud-init/user-data
+  fi
+  sleep 5
+  IP_VM=$(cat /var/lib/libvirt/dnsmasq/default.leases | grep $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') | awk '{print $3}')
+  if [ -z "$IP_VM" ]; then
+    log_err "Nie można uzyskać adresu IP VM. Wykonaj ręcznie diagnostykę:\n  sudo virsh domiflist safetytwin-vm\n  sudo virsh net-list --all\n  sudo virsh net-info default\n  sudo cat /var/lib/libvirt/dnsmasq/default.leases\n  sudo virsh console safetytwin-vm\n  sudo cat /var/lib/safetytwin/cloud-init/user-data"
+  else
+    log_ok "VM ma adres IP: $IP_VM"
+  fi
+}
+
+# Helper: dodaj automatyczną naprawę sieci VM
+repair_vm_network() {
+  # Diagnostyka sieci VM
+  log "[AUTO-FIX] Diagnostyka sieci VM..."
+  virsh domiflist safetytwin-vm || true
+  virsh net-list --all || true
+  virsh net-info default || true
+  cat /var/lib/libvirt/dnsmasq/default.leases || true
+  # Naprawa podłączenia do sieci
+  if ! virsh domiflist safetytwin-vm | grep -q default; then
+    log_warn "VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
+    virsh detach-interface safetytwin-vm --type network --mac $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') --persistent || true
+    virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
+    log_ok "Podłączono VM do sieci 'default'."
+  fi
+  if ! virsh net-info default | grep -q 'Active: yes'; then
+    log_warn "Sieć 'default' nieaktywna. Próbuję uruchomić..."
+    virsh net-start default
+    virsh net-autostart default
+  fi
+  # Naprawa user-data
+  if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
+    log_warn "Dodaję domyślną konfigurację sieci do user-data."
+    echo -e '\nnetwork:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true' >> /var/lib/safetytwin/cloud-init/user-data
+  fi
+  sleep 5
+  IP_VM=$(cat /var/lib/libvirt/dnsmasq/default.leases | grep $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') | awk '{print $3}')
+  if [ -z "$IP_VM" ]; then
+    log_err "Nie można uzyskać adresu IP VM. Wykonaj ręcznie diagnostykę:\n  sudo virsh domiflist safetytwin-vm\n  sudo virsh net-list --all\n  sudo virsh net-info default\n  sudo cat /var/lib/libvirt/dnsmasq/default.leases\n  sudo virsh console safetytwin-vm\n  sudo cat /var/lib/safetytwin/cloud-init/user-data"
+  else
+    log_ok "VM ma adres IP: $IP_VM"
+  fi
 }
 
 log "Analizuję $YAML_FILE..."

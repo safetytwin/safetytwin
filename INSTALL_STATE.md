@@ -67,6 +67,24 @@ Po poprawnym uruchomieniu instalatora:
 
 ---
 
+## Problemy z siecią VM
+Jeśli maszyna wirtualna nie otrzymuje adresu IP:
+
+1. Uruchom skrypt diagnostyczny:
+   ```bash
+   bash diagnose-vm-network.sh
+   ```
+   Skrypt zbierze wszystkie kluczowe informacje o sieci VM. Wynik dołącz do zgłoszenia do wsparcia.
+
+2. Ręczna diagnostyka (jeśli nie możesz uruchomić skryptu):
+   - Sieć 'default' jest aktywna: `sudo virsh net-list --all`
+   - VM jest podłączona do sieci: `sudo virsh domiflist safetytwin-vm`
+   - Plik user-data zawiera sekcję network:
+
+Jeśli nadal nie działa, sprawdź logi lub skontaktuj się ze wsparciem.
+
+---
+
 ## Szybka diagnostyka (co sprawdzić po instalacji)
 - Czy działa: `safetytwin status`
 - Czy działa: `virsh list --all`, `qemu-system-x86_64 --version`
