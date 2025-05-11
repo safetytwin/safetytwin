@@ -29,9 +29,10 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
-    # Password: safetytwin
     passwd: \$6\$rounds=4096\$OX4t4MRpbg\$QJLlRfXTl9Jgp9YlUhg5vpZ72X9vK49XnfUm.XIekX.ZD5xQvS3DVJ9jYmTvS0wIULgBX6Ix0NVx2xEIyNVYv/
 ssh_pwauth: true
+chpasswd:
+  expire: false
 package_update: true
 packages:
   - qemu-guest-agent
