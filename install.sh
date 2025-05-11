@@ -14,15 +14,15 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Katalogi instalacyjne
-INSTALL_DIR="/opt/digital-twin"
-CONFIG_DIR="/etc/digital-twin"
-STATE_DIR="/var/lib/digital-twin"
-LOG_DIR="/var/log/digital-twin"
+INSTALL_DIR="/opt/safetytwin"
+CONFIG_DIR="/etc/safetytwin"
+STATE_DIR="/var/lib/safetytwin"
+LOG_DIR="/var/log/safetytwin"
 
 # Ustawienia domyślne
 DEFAULT_BRIDGE_PORT=5678
 DEFAULT_INTERVAL=10
-DEFAULT_VM_NAME="digital-twin-vm"
+DEFAULT_VM_NAME="safetytwin-vm"
 DEFAULT_VM_MEMORY=4096  # MB
 DEFAULT_VM_VCPUS=2
 
@@ -189,8 +189,8 @@ create_directories() {
 define_cron_monitor() {
   log "Konfiguracja monitoringu storage w cronie..."
   # Upewnij się, że katalog monitorowany istnieje
-  mkdir -p /var/lib/digital-twin
-  sed 's|/var/lib/vm-bridge|/var/lib/digital-twin|g' vm-bridge/utils/monitor_storage.sh > /usr/local/bin/monitor_storage.sh
+  mkdir -p /var/lib/safetytwin
+  sed 's|/var/lib/vm-bridge|/var/lib/safetytwin|g' vm-bridge/utils/monitor_storage.sh > /usr/local/bin/monitor_storage.sh
   chmod +x /usr/local/bin/monitor_storage.sh
   # Dodaj do crona root jeśli nie istnieje
   if ! crontab -l | grep -q '/usr/local/bin/monitor_storage.sh'; then
@@ -207,19 +207,19 @@ install_safetytwin_cli() {
   cat <<'EOF' > /usr/local/bin/safetytwin
 #!/bin/bash
 ACTION="$1"
-LOGFILE="/var/log/digital-twin/vm-bridge.log"
-AGENT_SERVICE="digital-twin-agent.service"
+LOGFILE="/var/log/safetytwin/vm-bridge.log"
+AGENT_SERVICE="safetytwin-agent.service"
 MONITOR_SCRIPT="/usr/local/bin/monitor_storage.sh"
 
 case "$ACTION" in
   status)
     echo "== Status usług =="
-    systemctl status digital-twin-agent.service --no-pager
-    systemctl status digital-twin-bridge.service --no-pager
+    systemctl status safetytwin-agent.service --no-pager
+    systemctl status safetytwin-bridge.service --no-pager
     ;;
   agent-log)
     echo "== Logi agenta =="
-    journalctl -u digital-twin-agent.service -n 50 --no-pager
+    journalctl -u safetytwin-agent.service -n 50 --no-pager
     ;;
   bridge-log)
     echo "== Logi VM Bridge =="
@@ -318,7 +318,7 @@ EOF
 # Konfiguracja VM Bridge
 libvirt_uri: qemu:///system
 vm_user: root
-vm_password: digital-twin-password
+vm_password: safetytwin-password
 vm_key_path: $CONFIG_DIR/ssh/id_rsa
 ansible_inventory: $CONFIG_DIR/inventory.yml
 ansible_playbook: $INSTALL_DIR/apply_services.yml
@@ -369,7 +369,7 @@ EOF
 
   # Wygeneruj klucz SSH
   if [ ! -f "$CONFIG_DIR/ssh/id_rsa" ]; then
-    ssh-keygen -t rsa -b 4096 -f "$CONFIG_DIR/ssh/id_rsa" -N "" -C "digital-twin@localhost"
+    ssh-keygen -t rsa -b 4096 -f "$CONFIG_DIR/ssh/id_rsa" -N "" -C "safetytwin@localhost"
     log_success "Wygenerowano klucz SSH dla komunikacji z VM."
   fi
 
@@ -396,19 +396,19 @@ install_agent() {
 EOF
 
   # Utwórz usługę systemd dla agenta
-  cat > "/etc/systemd/system/digital-twin-agent.service" << EOF
+  cat > "/etc/systemd/system/safetytwin-agent.service" << EOF
 [Unit]
 Description=Digital Twin Agent
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/digital-twin-agent -config $INSTALL_DIR/agent-config.json
+ExecStart=$INSTALL_DIR/safetytwin-agent -config $INSTALL_DIR/agent-config.json
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-agent
+SyslogIdentifier=safetytwin-agent
 User=root
 Group=root
 WorkingDirectory=$INSTALL_DIR
@@ -424,7 +424,7 @@ EOF
 install_vm_bridge_service() {
   log "Instalowanie usługi VM Bridge..."
 
-  cat > "/etc/systemd/system/digital-twin-bridge.service" << EOF
+  cat > "/etc/systemd/system/safetytwin-bridge.service" << EOF
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service
@@ -436,7 +436,7 @@ Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-bridge
+SyslogIdentifier=safetytwin-bridge
 User=root
 Group=root
 WorkingDirectory=$INSTALL_DIR
@@ -477,17 +477,17 @@ create_base_vm() {
   mkdir -p "$STATE_DIR/cloud-init"
 
   cat > "$STATE_DIR/cloud-init/meta-data" << EOF
-instance-id: digital-twin-vm
-local-hostname: digital-twin-vm
+instance-id: safetytwin-vm
+local-hostname: safetytwin-vm
 EOF
 
   cat > "$STATE_DIR/cloud-init/user-data" << EOF
 #cloud-config
-hostname: digital-twin-vm
+hostname: safetytwin-vm
 users:
   - name: root
     lock_passwd: false
-    hashed_passwd: $(openssl passwd -6 "digital-twin-password")
+    hashed_passwd: $(openssl passwd -6 "safetytwin-password")
     ssh_authorized_keys:
       - $(cat "$CONFIG_DIR/ssh/id_rsa.pub")
 ssh_pwauth: true
@@ -684,7 +684,7 @@ install_vm_bridge_on_vm() {
         content: |
           libvirt_uri: qemu:///system
           vm_user: root
-          vm_password: digital-twin-password
+          vm_password: safetytwin-password
           vm_key_path: /root/.ssh/id_rsa
           ansible_inventory: /etc/vm-bridge/inventory.yml
           ansible_playbook: /opt/vm-bridge/apply_services.yml
@@ -739,14 +739,14 @@ start_services() {
   systemctl daemon-reload
 
   # Włącz i uruchom usługi
-  systemctl enable digital-twin-agent.service
-  systemctl start digital-twin-agent.service
+  systemctl enable safetytwin-agent.service
+  systemctl start safetytwin-agent.service
 
   log_success "Usługi uruchomione pomyślnie."
 
   # Sprawdź status usług
   log "Status usługi agenta:"
-  systemctl status digital-twin-agent.service --no-pager
+  systemctl status safetytwin-agent.service --no-pager
 }
 
 # Wyświetl podsumowanie
@@ -761,7 +761,7 @@ show_summary() {
   echo -e "Instalacja zakończona pomyślnie. Oto podsumowanie:"
   echo
   echo -e "1. ${BLUE}Agent monitorujący${NC} działa na tym komputerze"
-  echo -e "   Status: $(systemctl is-active digital-twin-agent.service)"
+  echo -e "   Status: $(systemctl is-active safetytwin-agent.service)"
   echo -e "   Konfiguracja: $INSTALL_DIR/agent-config.json"
   echo -e "   Logi: $LOG_DIR/agent.log"
   echo
@@ -775,11 +775,58 @@ show_summary() {
   echo -e "   Endpoint API: http://$VM_IP:$DEFAULT_BRIDGE_PORT/api/v1"
   echo
   echo -e "Możesz monitorować logi poprzez:"
-  echo -e "   journalctl -fu digital-twin-agent"
+  echo -e "   journalctl -fu safetytwin-agent"
   echo -e "   ssh -i $CONFIG_DIR/ssh/id_rsa root@$VM_IP journalctl -fu vm-bridge"
   echo
   echo -e "${GREEN}=================================================${NC}"
   echo
+}
+
+# Funkcja sprawdzająca i naprawiająca usługi safetytwin
+auto_fix_services() {
+  log "[AUTO-FIX] Sprawdzanie i naprawa usług safetytwin..."
+  # Agent
+  if [ ! -f "/etc/systemd/system/safetytwin-agent.service" ]; then
+    log_warning "Brak pliku unit safetytwin-agent.service. Tworzę ponownie..."
+    install_agent
+  fi
+  systemctl daemon-reload
+  systemctl enable --now safetytwin-agent.service || log_error "Nie można uruchomić safetytwin-agent.service"
+  # Bridge
+  if [ ! -f "/etc/systemd/system/safetytwin-bridge.service" ]; then
+    log_warning "Brak pliku unit safetytwin-bridge.service. Tworzę ponownie..."
+    install_vm_bridge_service
+  fi
+  systemctl daemon-reload
+  systemctl enable --now safetytwin-bridge.service || log_error "Nie można uruchomić safetytwin-bridge.service"
+}
+
+# Funkcja sprawdzająca i naprawiająca VM
+auto_fix_vm() {
+  log "[AUTO-FIX] Sprawdzanie i naprawa maszyny wirtualnej..."
+  if [ ! -f "/var/lib/safetytwin/images/ubuntu-base.img" ]; then
+    log_warning "Brak obrazu VM. Pobieram..."
+    create_base_vm
+  fi
+  if ! virsh list --all | grep -q safetytwin-vm; then
+    log_warning "VM nie jest zdefiniowana. Definiuję..."
+    virsh define /var/lib/safetytwin/vm-definition.xml || log_error "Nie można zdefiniować VM."
+  fi
+  if ! virsh list --state-running | grep -q safetytwin-vm; then
+    log_warning "VM nie jest uruchomiona. Uruchamiam..."
+    virsh start safetytwin-vm || log_error "Nie można uruchomić VM."
+  fi
+}
+
+# Funkcja sprawdzająca i naprawiająca cron monitoringu
+auto_fix_monitoring_cron() {
+  log "[AUTO-FIX] Sprawdzanie i naprawa monitoringu storage w cronie..."
+  if ! crontab -l 2>/dev/null | grep -q '/usr/local/bin/monitor_storage.sh'; then
+    (crontab -l 2>/dev/null; echo "0 * * * * /usr/local/bin/monitor_storage.sh >> /var/log/safetytwin/storage.log 2>&1") | crontab -
+    log_success "Dodano zadanie monitoringu storage do crona."
+  else
+    log "Zadanie monitoringu storage już istnieje w cronie."
+  fi
 }
 
 # Główna funkcja
@@ -803,4 +850,8 @@ main() {
 }
 
 # Uruchom główną funkcję
-main "$@"
+  # Automatyczne naprawy przed główną instalacją
+  auto_fix_services
+  auto_fix_vm
+  auto_fix_monitoring_cron
+  main "$@"

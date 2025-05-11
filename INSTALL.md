@@ -67,9 +67,38 @@ safetytwin what           # Ostatnie akcje z logów
 
 ---
 
+## Automatyczna samonaprawa przez instalator
+
+Instalator safetytwin został wyposażony w mechanizmy samonaprawcze. Jeśli wykryje typowe problemy (np. brak katalogów, nieaktywne usługi, brak CLI, brak obrazu VM, brak zadania w cronie, błędne uprawnienia), automatycznie podejmie próbę ich naprawy:
+
+- Tworzy brakujące katalogi (`/var/lib/safetytwin/`, `/etc/safetytwin/`, `/var/log/safetytwin/`, `/var/lib/safetytwin/images/`, `/etc/safetytwin/ssh/`).
+- Przywraca lub nadpisuje plik CLI `/usr/local/bin/safetytwin` z odpowiednimi uprawnieniami.
+- Generuje klucze SSH jeśli nie istnieją.
+- Restartuje i aktywuje usługi `safetytwin-agent`, `safetytwin-bridge`, `libvirtd`.
+- Dodaje zadanie monitoringu storage do crona, jeśli go brakuje.
+- Pobiera obraz VM jeśli nie istnieje.
+- Naprawia uprawnienia do katalogów i plików.
+
+Po każdej instalacji generowany jest plik `INSTALL_RESULT.yaml`, który zawiera aktualny stan systemu i zalecenia naprawcze.
+
+### Zalecenia
+- Instalator należy zawsze uruchamiać z uprawnieniami root: `sudo bash install.sh`.
+- Jeśli napotkasz problem, uruchom instalator ponownie — większość błędów zostanie automatycznie naprawiona.
+- Sprawdź plik `INSTALL_RESULT.yaml` po instalacji, aby zobaczyć szczegółowy raport.
+
 ## Troubleshooting
 
-### Najczęstsze problemy i rozwiązania
+Jeśli napotkasz problemy podczas instalacji lub działania safetytwin, sprawdź poniższe punkty:
+
+- Upewnij się, że uruchamiasz instalator jako root (`sudo bash install.sh`).
+- Sprawdź logi w `/var/log/safetytwin/`.
+- Zweryfikuj status usług: `systemctl status safetytwin-agent safetytwin-bridge libvirtd`.
+- Sprawdź czy katalogi `/var/lib/safetytwin/`, `/etc/safetytwin/`, `/var/log/safetytwin/` istnieją.
+- Upewnij się, że CLI `safetytwin` działa (`safetytwin status`).
+- Sprawdź czy obraz VM jest pobrany: `/var/lib/safetytwin/images/ubuntu-base.img`.
+- Sprawdź czy monitoring storage jest aktywny w cronie (`crontab -l | grep monitor_storage.sh`).
+
+Jeśli problem nie ustępuje, uruchom instalator ponownie lub przejrzyj wygenerowany plik `INSTALL_RESULT.yaml`.
 
 **1. Brak pakietów systemowych (np. genisoimage, libvirt):**
 - Uruchom ponownie instalator (`sudo bash install.sh`).

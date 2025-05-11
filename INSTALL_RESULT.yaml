@@ -1,0 +1,70 @@
+# Stan po instalacji safetytwin (2025-05-11 08:52)
+
+safetytwin_installation:
+  agent:
+    installed: "+false"
+    status: false
+    message: "Agent safetytwin zainstalowany: false"
+  bridge:
+    installed: "+false"
+    status: false
+    message: "Usługa safetytwin bridge zainstalowana: false"
+  vm:
+    image_downloaded: true
+    image_path: "/var/lib/safetytwin/images/ubuntu-base.img"
+    image_resized: true
+    vm_defined: false
+    vm_started: false
+    cloud_init:
+      status: "unknown"
+      message: "Automatyczna detekcja statusu cloud-init/SSH wymaga logiki dostosowanej do twojej infrastruktury."
+      ssh_connected: false
+      recommendation: |
+        Sprawdź konsolę VM:
+          virsh console safetytwin-vm
+        oraz konfigurację sieci (NAT/DHCP/mostek) w libvirt.
+  directories:
+    - path: "/var/lib/safetytwin/"
+      exists: true
+    - path: "/etc/safetytwin/"
+      exists: true
+    - path: "/var/log/safetytwin/"
+      exists: true
+    - path: "/var/lib/safetytwin/images/"
+      exists: true
+    - path: "/etc/safetytwin/ssh/"
+      exists: true
+  ssh_keys:
+    generated: true
+    path: "/etc/safetytwin/ssh/"
+  cli:
+    installed: true
+    path: "/usr/local/bin/safetytwin"
+    commands:
+      - status
+      - agent-log
+      - bridge-log
+      - cron-list
+      - cron-add
+      - cron-remove
+      - cron-status
+      - what
+  monitoring:
+    storage:
+      script_installed: true
+      cron_added: false
+      status: OK
+  services:
+    libvirtd:
+      active: true
+    safetytwin-agent:
+      active: false
+    safetytwin-bridge:
+      active: false
+  summary:
+    success: unknown
+    message: |
+      Ten plik został wygenerowany automatycznie. Sprawdź szczegóły powyżej, aby ocenić stan instalacji safetytwin.
+    recommendations:
+      - Sprawdź logi usług i konsolę VM jeśli są problemy z połączeniem SSH.
+      - Zweryfikuj katalogi i status usług.
