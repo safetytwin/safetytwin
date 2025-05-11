@@ -24,12 +24,27 @@ sudo mkdir -p "$MNT_DIR"
 echo "[INFO] Mounting VM image..."
 sudo guestmount -a "$VM_IMG" -i --rw "$MNT_DIR"
 
-# Set password inside chroot
-cat << EOF | sudo chroot "$MNT_DIR" /bin/bash
-  echo "ubuntu:$PASSWORD" | chpasswd
-  echo "[INFO] Password for ubuntu set to '$PASSWORD'"
-EOF
+# Check if user exists
+if ! sudo grep -q "^ubuntu:" "$MNT_DIR/etc/passwd"; then
+  echo "[ERROR] User 'ubuntu' does not exist in the image. Password cannot be set."
+  sudo guestunmount "$MNT_DIR"
+  exit 2
+fi
 
-# Unmount
+# Mount /proc, /dev, /sys for full PAM functionality
+sudo mount --bind /proc "$MNT_DIR/proc"
+sudo mount --bind /dev "$MNT_DIR/dev"
+sudo mount --bind /sys "$MNT_DIR/sys"
+
+# Set password inside chroot
+sudo chroot "$MNT_DIR" /bin/bash -c "echo 'ubuntu:$PASSWORD' | chpasswd" && \
+  echo "[INFO] Password for ubuntu set to '$PASSWORD'"
+
+# Unmount /proc, /dev, /sys
+sudo umount "$MNT_DIR/proc"
+sudo umount "$MNT_DIR/dev"
+sudo umount "$MNT_DIR/sys"
+
+# Unmount image
 sudo guestunmount "$MNT_DIR"
 echo "[INFO] Done. Password for ubuntu user forcibly set to '$PASSWORD' in VM image."

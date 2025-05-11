@@ -599,97 +599,10 @@ EOF
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
       <source file='$STATE_DIR/cloud-init/cloud-init.iso'/>
-      <target dev='sda' bus='sata'/>
+      <target dev='hdc' bus='ide'/>
       <readonly/>
     </disk>
-    <interface type='network'>
-      <source network='default'/>
-      <model type='virtio'/>
-    </interface>
-    <console type='pty'/>
-    <graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1'>
-      <listen type='address' address='127.0.0.1'/>
-    </graphics>
-  </devices>
-</domain>
-EOF
-
-  # Zdefiniuj i uruchom VM
-  virsh define "$STATE_DIR/vm-definition.xml"
-  virsh start "$VM_NAME"
-
-  log "Czekanie na uruchomienie VM i konfigurację cloud-init..."
-  sleep 60  # Daj VM czas na uruchomienie i skonfigurowanie
-
-  # Sprawdź, czy VM jest dostępna przez SSH
-  attempt=1
-  max_attempts=10
-  while [ $attempt -le $max_attempts ]; do
-    log "Próba połączenia SSH ($attempt/$max_attempts)..."
-
-    # Pobierz adres IP VM
-    VM_IP=$(virsh domifaddr "$VM_NAME" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
-
-    if [ -z "$VM_IP" ]; then
-      log_warning "Nie można uzyskać adresu IP VM. Ponowna próba za 10 sekund..."
-      sleep 10
-      attempt=$((attempt + 1))
-      continue
-    fi
-
-    # Spróbuj połączyć się przez SSH
-    if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "$CONFIG_DIR/ssh/id_rsa" root@"$VM_IP" echo "SSH działa"; then
-      log_success "Połączenie SSH działa! VM jest gotowa."
-
-      # Zapisz adres IP do konfiguracji
-      sed -i "s/bridge_url:.*/bridge_url: http:\/\/$VM_IP:$DEFAULT_BRIDGE_PORT\/api\/v1\/update_state/" "$INSTALL_DIR/agent-config.json"
-
-      # Utwórz plik inwentarza Ansible
-      cat > "$CONFIG_DIR/inventory.yml" << EOF
-all:
-  hosts:
-    digital_twin:
-      ansible_host: $VM_IP
-      ansible_user: root
-      ansible_ssh_private_key_file: $CONFIG_DIR/ssh/id_rsa
-      ansible_become: yes
-EOF
-
-      break
-    else
-      log_warning "Nie można połączyć się przez SSH. Ponowna próba za 10 sekund..."
-      sleep 10
-      attempt=$((attempt + 1))
-    fi
-  done
-
-  if [ $attempt -gt $max_attempts ]; then
-    log_error "Nie udało się połączyć z VM przez SSH po $max_attempts próbach."
-    log_error "Sprawdź stan VM przy użyciu 'virsh console $VM_NAME'."
-    return 1
-  fi
-
-  log_success "Bazowa maszyna wirtualna utworzona pomyślnie."
-}
-
-# Instalacja VM Bridge na VM
-install_vm_bridge_on_vm() {
-  log "[AUTO-FIX] Diagnostyka sieci VM..."
-  virsh domiflist safetytwin-vm || true
-  virsh net-list --all || true
-  virsh net-info default || true
-  cat /var/lib/libvirt/dnsmasq/default.leases || true
-  if ! virsh domiflist safetytwin-vm | grep -q default; then
-    log "[AUTO-FIX] VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
-    virsh detach-interface safetytwin-vm --type network --mac $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') --persistent || true
-    virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
-    log "[AUTO-FIX] Podłączono VM do sieci 'default'."
-  fi
-  if ! virsh net-info default | grep -q 'Active: yes'; then
-    log "[AUTO-FIX] Sieć 'default' nieaktywna. Próbuję uruchomić..."
-    if virsh net-start default 2>&1 | grep -q 'network is already active'; then
-      log "Sieć 'default' już aktywna — pomijam restart."
-    else
+{{ ... }}
       virsh net-start default
     fi
     virsh net-autostart default
@@ -703,6 +616,10 @@ install_vm_bridge_on_vm() {
   sleep 5
   IP_VM=$(cat /var/lib/libvirt/dnsmasq/default.leases | grep $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') | awk '{print $3}')
   if [ -z "$IP_VM" ]; then
+{{ ... }}
+  sleep 5
+  IP_VM=$(cat /var/lib/libvirt/dnsmasq/default.leases | grep $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') | awk '{print $3}')
+  if [ -z "$IP_VM" ]; then
     log_error "Nie można uzyskać adresu IP VM. Możesz uruchomić pełną diagnostykę sieci VM poleceniem:\n  bash diagnose-vm-network.sh\nWyślij wynik tego skryptu do wsparcia."
     # Wyświetl skrócone instrukcje ręczne
     echo "Ręczna diagnostyka:\n  sudo virsh domiflist safetytwin-vm\n  sudo virsh net-list --all\n  sudo virsh net-info default\n  sudo cat /var/lib/libvirt/dnsmasq/default.leases\n  sudo virsh console safetytwin-vm\n  sudo cat /var/lib/safetytwin/cloud-init/user-data"
@@ -711,6 +628,7 @@ install_vm_bridge_on_vm() {
   fi
 
   VM_IP=$(virsh domifaddr "$DEFAULT_VM_NAME" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+{{ ... }}
 
   if [ -z "$VM_IP" ]; then
     log_error "Nie można uzyskać adresu IP VM."

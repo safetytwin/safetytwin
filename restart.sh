@@ -63,17 +63,19 @@ sudo chown libvirt-qemu:libvirt-qemu "$ISO"
 
 # 4. Recreate and start the VM
 echo "[restart.sh] Creating and starting new VM..."
+# 4. Recreate and start the VM, attach cloud-init ISO as IDE CD-ROM (hdc)
 sudo virt-install --name "$VM_NAME" \
   --memory 2048 \
   --vcpus 2 \
   --disk "$BASE_IMG",device=disk,bus=virtio \
-  --disk "$ISO",device=cdrom \
+  --disk "$ISO",device=cdrom,bus=ide \
   --os-variant ubuntu20.04 \
   --virt-type kvm \
   --graphics none \
   --network network=default,model=virtio \
   --import \
-  --noautoconsole
+  --noautoconsole \
+  --check path_in_use=off
 
 # 5. Run main install script
 echo "[restart.sh] Running install.sh..."

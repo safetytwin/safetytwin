@@ -81,6 +81,37 @@ cd digital-twin
 sudo bash scripts/install.sh
 ```
 
+---
+
+## Rozwiązywanie problemów z cloud-init i logowaniem do VM
+
+- **Cloud-init ISO MUSI być podpięte jako CD-ROM na szynie IDE (bus=ide, device=cdrom, np. /dev/hdc lub /dev/cdrom).**
+  Jeśli ISO jest podpięte inaczej (np. jako sda/sata), cloud-init NIE przetworzy user-data i nie utworzy użytkownika ani nie ustawi hasła.
+- Przykład poprawnej komendy:
+  ```bash
+  sudo virt-install --name safetytwin-vm \
+    --memory 2048 \
+    --vcpus 2 \
+    --disk /var/lib/safetytwin/images/ubuntu-base.img,device=disk,bus=virtio \
+    --disk /var/lib/safetytwin/cloud-init/cloud-init.iso,device=cdrom,bus=ide \
+    --os-variant ubuntu20.04 \
+    --virt-type kvm \
+    --graphics none \
+    --network network=default,model=virtio \
+    --import \
+    --noautoconsole \
+    --check path_in_use=off
+  ```
+- **Zawsze niszcz i usuwaj VM przed ponowną instalacją:**
+  ```bash
+  sudo virsh destroy safetytwin-vm || true
+  sudo virsh undefine --nvram safetytwin-vm || true
+  ```
+- Jeśli nie możesz się zalogować na `ubuntu`/`safetytwin` i użytkownik nie istnieje w VM – oznacza to, że cloud-init nie przetworzył user-data (najczęściej z powodu złego podpięcia ISO).
+- Sprawdź obecność `/dev/cdrom` lub `/dev/hdc` w VM oraz logi cloud-init (`/var/log/cloud-init.log`).
+- Szczegóły i przykłady znajdziesz w `restart.sh` oraz `install.sh`.
+```
+
 Skrypt automatycznie zainstaluje wszystkie wymagane komponenty i uruchomi system.
 
 ### Opcje instalacji
