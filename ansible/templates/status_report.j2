@@ -1,0 +1,91 @@
+=================================================================
+     RAPORT STANU CYFROWEGO BLIŹNIAKA - {{ ansible_date_time.date }}
+=================================================================
+
+Wygenerowano: {{ ansible_date_time.iso8601 }}
+Hostname: {{ ansible_hostname }}
+System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+Kernel: {{ ansible_kernel }}
+
+-----------------------------------------------------------------
+STATYSTYKI SYSTEMOWE
+-----------------------------------------------------------------
+CPU: {{ ansible_processor_vcpus }} vCPUs
+Pamięć: {{ (ansible_memtotal_mb / 1024) | round(2) }} GB
+Obciążenie: {{ ansible_load.get('15min', 'N/A') }} (15 min avg)
+Uptime: {{ ansible_uptime_seconds | int // 86400 }}d {{ ansible_uptime_seconds | int % 86400 // 3600 }}h {{ ansible_uptime_seconds | int % 3600 // 60 }}m
+
+-----------------------------------------------------------------
+SKONFIGUROWANE USŁUGI
+-----------------------------------------------------------------
+Usługi systemd: {{ service_config.services | selectattr('type', 'equalto', 'systemd') | list | length }}
+Kontenery Docker: {{ service_config.services | selectattr('type', 'equalto', 'docker') | list | length }}
+Niezależne procesy: {{ service_config.processes | length }}
+
+-----------------------------------------------------------------
+USŁUGI SYSTEMD
+-----------------------------------------------------------------
+{% for service in service_config.services if service.type == 'systemd' %}
+- {{ service.name }}: {{ service.state | upper }}{% if service.is_llm_related is defined and service.is_llm_related %} [LLM]{% endif %}
+{% else %}
+Brak skonfigurowanych usług systemd.
+{% endfor %}
+
+-----------------------------------------------------------------
+KONTENERY DOCKER
+-----------------------------------------------------------------
+{% for service in service_config.services if service.type == 'docker' %}
+- {{ service.name }}: {{ service.state | upper }}
+  Obraz: {{ service.image }}
+  {% if service.ports is defined and service.ports | length > 0 %}
+  Porty: {% for port in service.ports %}{{ port.host_port }}:{{ port.container_port }}{% if not loop.last %}, {% endif %}{% endfor %}
+  {% endif %}
+  {% if service.is_llm_related is defined and service.is_llm_related %}
+  [LLM]
+  {% endif %}
+{% else %}
+Brak skonfigurowanych kontenerów Docker.
+{% endfor %}
+
+-----------------------------------------------------------------
+NIEZALEŻNE PROCESY
+-----------------------------------------------------------------
+{% for process in service_config.processes %}
+- {{ process.name }} (PID: {{ process.pid }}): {{ process.user | default('root') }}
+  CPU: {{ process.cpu_percent | default(0) | round(2) }}%, Pamięć: {{ process.memory_percent | default(0) | round(2) }}%
+  {% if process.is_llm_related is defined and process.is_llm_related %}
+  [LLM]
+  {% endif %}
+{% else %}
+Brak skonfigurowanych niezależnych procesów.
+{% endfor %}
+
+-----------------------------------------------------------------
+STAN FAKTYCZNY SYSTEMU
+-----------------------------------------------------------------
+Działające usługi systemd: {{ status_systemd }}
+Działające kontenery Docker: {{ status_docker }}
+Całkowita liczba procesów: {{ ansible_processor_threads_per_core * ansible_processor_vcpus }}
+
+-----------------------------------------------------------------
+UWAGI
+-----------------------------------------------------------------
+{% if has_llm is defined and has_llm %}
+[x] Wykryto komponenty związane z LLM
+{% else %}
+[ ] Nie wykryto komponentów związanych z LLM
+{% endif %}
+
+{% if service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'running') | list | length > 0 %}
+[x] Działające kontenery Docker wymagają dostępu do internetu
+{% else %}
+[ ] Brak działających kontenerów Docker
+{% endif %}
+
+{% if service_config.processes | length > 10 %}
+[!] Duża liczba niezależnych procesów ({{ service_config.processes | length }}) może wpływać na wydajność systemu
+{% endif %}
+
+=================================================================
+                   KONIEC RAPORTU STANU
+=================================================================

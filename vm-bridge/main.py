@@ -21,29 +21,14 @@ from vm_bridge.utils.config import Config
 from vm_bridge.utils.state_store import StateStore
 from vm_bridge.utils.vm_manager import VMManager
 from vm_bridge.utils.service_generator import ServiceGenerator
+from vm_bridge.utils.logging import configure_logger
+from vm_bridge.utils.sender import Sender
 
 # Informacje o wersji
 __version__ = '1.0.0'
 __author__ = 'Digital Twin System'
 
-# Konfiguracja logowania
-def setup_logging(log_file='/var/log/digital-twin/vm-bridge.log', verbose=False):
-    """Konfiguracja systemu logowania."""
-    # Utwórz katalog logów, jeśli nie istnieje
-    log_dir = os.path.dirname(log_file)
-    os.makedirs(log_dir, exist_ok=True)
-    
-    # Konfiguracja loggera
-    level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(log_file)
-        ]
-    )
-    return logging.getLogger("vm-bridge")
+# Konfiguracja logowania jest teraz realizowana przez configure_logger z utils.logging
 
 # Zmienne globalne
 logger = None
@@ -51,6 +36,7 @@ config = None
 state_store = None
 vm_manager = None
 service_generator = None
+sender = None
 lock = threading.Lock()
 
 # Inicjalizacja aplikacji Flask
@@ -215,14 +201,17 @@ def root():
     """
     return Response(html, mimetype='text/html')
 
-def init_components(config_path):
+def init_components(config_path, log_file, verbose):
     """Inicjalizacja komponentów systemu."""
-    global config, state_store, vm_manager, service_generator, logger
+    global config, state_store, vm_manager, service_generator, logger, sender
     
     try:
         # Wczytaj konfigurację
         config = Config(config_path)
         
+        # Skonfiguruj logger
+        logger = configure_logger(log_file, verbose)
+
         # Inicjalizuj state store
         state_store = StateStore(config.state_dir)
         
@@ -238,11 +227,17 @@ def init_components(config_path):
         
         # Inicjalizuj generator usług
         service_generator = ServiceGenerator(config.templates_dir)
+
+        # Inicjalizuj sender (do komunikacji z bridge)
+        sender = Sender(getattr(config, 'bridge_url', 'http://localhost:5678/api/v1/update_state'))
         
         logger.info("Komponenty zainicjalizowane pomyślnie")
         return True
     except Exception as e:
-        logger.error(f"Błąd podczas inicjalizacji komponentów: {e}")
+        if logger:
+            logger.error(f"Błąd podczas inicjalizacji komponentów: {e}")
+        else:
+            print(f"Błąd podczas inicjalizacji komponentów: {e}")
         return False
 
 def main():
@@ -269,13 +264,12 @@ def main():
         print(f"Copyright (c) 2025 {__author__}")
         return 0
     
-    # Konfiguracja logowania
-    logger = setup_logging(args.log, args.verbose)
-    logger.info(f"VM Bridge v{__version__} uruchamianie...")
-    
-    # Inicjalizacja komponentów
-    if not init_components(args.config):
-        logger.error("Nie udało się zainicjalizować komponentów. Kończenie działania.")
+    # Inicjalizacja komponentów (łącznie z loggerem)
+    if not init_components(args.config, args.log, args.verbose):
+        if logger:
+            logger.error("Nie udało się zainicjalizować komponentów. Kończenie działania.")
+        else:
+            print("Nie udało się zainicjalizować komponentów. Kończenie działania.")
         return 1
         
     # Dodaj zmienną czasu uruchomienia

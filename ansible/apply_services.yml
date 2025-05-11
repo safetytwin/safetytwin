@@ -1,1 +1,318 @@
 # Główny playbook do konfiguracji usług
+---
+# apply_services.yml
+# Playbook Ansible do konfiguracji usług w wirtualnej maszynie cyfrowego bliźniaka
+# Ten playbook jest używany przez VM Bridge do aktualizacji stanu VM co 10 sekund
+
+- name: Konfiguracja cyfrowego bliźniaka
+  hosts: all
+  become: yes
+  vars:
+    config_file: "{{ config_file | default('/var/lib/vm-bridge/states/service_config.yaml') }}"
+    log_file: "/var/log/digital-twin-updates.log"
+    history_dir: "/var/lib/digital-twin/history"
+
+  pre_tasks:
+    - name: Wczytaj konfigurację usług
+      ansible.builtin.include_vars:
+        file: "{{ config_file }}"
+        name: service_config
+
+    - name: Sprawdź, czy VM jest gotowa
+      ansible.builtin.ping:
+      register: ping_result
+
+    - name: Wyświetl informacje o VM
+      ansible.builtin.debug:
+        msg: "Konfigurowanie VM: {{ ansible_hostname }}, {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Utwórz katalogi na dane historyczne
+      ansible.builtin.file:
+        path: "{{ history_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Zapisz kopię konfiguracji
+      ansible.builtin.copy:
+        content: "{{ service_config | to_nice_yaml }}"
+        dest: "{{ history_dir }}/config_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.yaml"
+        mode: "0644"
+
+  tasks:
+    #
+    # 1. Konfiguracja systemu
+    #
+    - name: Ustaw hostname
+      ansible.builtin.hostname:
+        name: "{{ service_config.system.hostname }}"
+      when: service_config.system.hostname is defined
+
+    - name: Ustaw profile systemu
+      ansible.builtin.copy:
+        dest: /etc/profile.d/system_profile.sh
+        content: |
+          # Profil wygenerowany automatycznie przez system cyfrowego bliźniaka
+          export DIGITAL_TWIN=true
+          export DIGITAL_TWIN_TIMESTAMP="{{ ansible_date_time.iso8601 }}"
+          export DIGITAL_TWIN_ORIGINAL_HOSTNAME="{{ service_config.system.hostname | default(ansible_hostname) }}"
+          export CPU_MODEL="{{ service_config.system.cpu.model | default('Unknown CPU') }}"
+          export CPU_CORES="{{ service_config.system.cpu.count | default(2) }}"
+          export MEMORY_TOTAL="{{ service_config.system.memory.total_gb | default(4) }}G"
+        mode: "0644"
+
+    #
+    # 2. Zarządzanie usługami systemd
+    #
+    - name: Konfiguruj usługi systemd
+      block:
+        - name: Ustaw stan usług systemd
+          ansible.builtin.systemd:
+            name: "{{ item.name }}"
+            state: "{{ 'started' if item.state == 'active' or item.state == 'running' else 'stopped' }}"
+            enabled: "{{ item.enabled | default(true) }}"
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'systemd') | list }}"
+          loop_control:
+            label: "{{ item.name }}"
+          ignore_errors: yes
+      when: service_config.services | selectattr('type', 'equalto', 'systemd') | list | length > 0
+
+    #
+    # 3. Zarządzanie kontenerami Docker
+    #
+    - name: Sprawdź, czy Docker jest zainstalowany
+      ansible.builtin.command: docker --version
+      register: docker_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Konfiguruj kontenery Docker
+      block:
+        - name: Przygotuj katalogi dla wolumenów
+          ansible.builtin.file:
+            path: "{{ item.source }}"
+            state: directory
+            mode: "0755"
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | sum(attribute='volumes', start=[]) | list }}"
+          loop_control:
+            label: "{{ item.source }}"
+          when: item.source is defined and not item.source.startswith('/') and not item.source.startswith('docker-volume:')
+
+        - name: Zatrzymaj istniejące kontenery
+          ansible.builtin.command: docker stop {{ item.name }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'stopped') | list }}"
+          ignore_errors: yes
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: true
+
+        - name: Usuń zatrzymane kontenery
+          ansible.builtin.command: docker rm {{ item.name }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'stopped') | list }}"
+          ignore_errors: yes
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: true
+
+        - name: Pobierz obrazy Docker
+          ansible.builtin.command: docker pull {{ item.image }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'running') | list }}"
+          loop_control:
+            label: "{{ item.image }}"
+          changed_when: true
+
+        - name: Zatrzymaj istniejące kontenery (przed uruchomieniem)
+          ansible.builtin.command: docker stop {{ item.name }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'running') | list }}"
+          ignore_errors: yes
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: false
+
+        - name: Usuń istniejące kontenery (przed uruchomieniem)
+          ansible.builtin.command: docker rm {{ item.name }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'running') | list }}"
+          ignore_errors: yes
+          loop_control:
+            label: "{{ item.name }}"
+          changed_when: false
+
+        - name: Uruchom kontenery Docker
+          ansible.builtin.shell: >
+            docker run -d 
+            --name {{ item.name }}
+            {% for port in item.ports %}
+            -p {{ port.host_ip | default('0.0.0.0') }}:{{ port.host_port }}:{{ port.container_port }}
+            {% endfor %}
+            {% for volume in item.volumes %}
+            -v {{ volume.source }}:{{ volume.destination }}{{ ':ro' if volume.read_only else '' }}
+            {% endfor %}
+            {% for env in item.environment %}
+            -e {{ env | quote }}
+            {% endfor %}
+            --restart={{ item.restart | default('no') }}
+            {{ item.image }}
+          loop: "{{ service_config.services | selectattr('type', 'equalto', 'docker') | selectattr('state', 'equalto', 'running') | list }}"
+          loop_control:
+            label: "{{ item.name }}"
+          register: docker_run
+          changed_when: docker_run.rc == 0
+          failed_when: docker_run.rc != 0 and 'already in use' not in docker_run.stderr
+
+        - name: Sprawdź stan kontenerów Docker
+          ansible.builtin.command: docker ps -a --format {% raw %}"{{.Names}} {{.Status}}"{% endraw %}
+          register: docker_ps
+          changed_when: false
+
+        - name: Wyświetl stan kontenerów Docker
+          ansible.builtin.debug:
+            msg: "Status kontenerów Docker: {{ docker_ps.stdout_lines }}"
+
+      when: docker_check is succeeded
+
+    #
+    # 4. Zarządzanie procesami niezwiązanymi z usługami
+    #
+    - name: Konfiguruj niezależne procesy
+      block:
+        - name: Utwórz katalog tymczasowy na skrypty
+          ansible.builtin.file:
+            path: /tmp/digital-twin-processes
+            state: directory
+            mode: "0755"
+
+        - name: Utwórz skrypty uruchamiające dla procesów
+          ansible.builtin.template:
+            src: process_launcher.sh.j2
+            dest: "/tmp/digital-twin-processes/process_{{ item.name }}_{{ item.pid }}.sh"
+            mode: "0755"
+          loop: "{{ service_config.processes }}"
+          loop_control:
+            label: "{{ item.name }} (PID: {{ item.pid }})"
+
+        - name: Utwórz pliki serwisowe dla procesów
+          ansible.builtin.template:
+            src: process_service.service.j2
+            dest: "/etc/systemd/system/digital_twin_{{ item.name }}_{{ item.pid }}.service"
+            mode: "0644"
+          loop: "{{ service_config.processes }}"
+          loop_control:
+            label: "{{ item.name }} (PID: {{ item.pid }})"
+          register: service_files
+
+        - name: Przeładuj daemon systemd
+          ansible.builtin.systemd:
+            daemon_reload: yes
+          when: service_files.changed
+
+        - name: Uruchom usługi procesów
+          ansible.builtin.systemd:
+            name: "digital_twin_{{ item.name }}_{{ item.pid }}.service"
+            state: started
+            enabled: yes
+          loop: "{{ service_config.processes }}"
+          loop_control:
+            label: "{{ item.name }} (PID: {{ item.pid }})"
+
+        - name: Sprawdź stan usług procesów
+          ansible.builtin.command: systemctl status digital_twin_{{ item.name }}_{{ item.pid }}.service
+          loop: "{{ service_config.processes }}"
+          ignore_errors: yes
+          loop_control:
+            label: "{{ item.name }} (PID: {{ item.pid }})"
+          register: process_status
+          changed_when: false
+
+        - name: Wyświetl stan usług procesów
+          ansible.builtin.debug:
+            msg: "{{ item.item.name }} (PID: {{ item.item.pid }}): {{ 'Uruchomiony' if item.rc == 0 else 'Błąd uruchomienia' }}"
+          loop: "{{ process_status.results }}"
+          loop_control:
+            label: "{{ item.item.name }}"
+
+      when: service_config.processes | length > 0
+
+    #
+    # 5. Konfiguracja sieci
+    #
+    - name: Konfiguruj interfejsy sieciowe
+      block:
+        - name: Ustaw właściwości sieciowe
+          ansible.builtin.copy:
+            dest: /etc/sysctl.d/99-digital-twin-network.conf
+            content: |
+              # Konfiguracja sieciowa wygenerowana przez system cyfrowego bliźniaka
+              # Wygenerowano: {{ ansible_date_time.iso8601 }}
+              net.ipv4.ip_forward = 1
+              net.ipv4.conf.all.forwarding = 1
+              net.ipv6.conf.all.forwarding = 1
+              net.ipv4.tcp_keepalive_time = 600
+              net.ipv4.tcp_keepalive_intvl = 60
+              net.ipv4.tcp_keepalive_probes = 5
+            mode: "0644"
+
+        - name: Załaduj ustawienia sysctl
+          ansible.builtin.command: sysctl -p /etc/sysctl.d/99-digital-twin-network.conf
+          changed_when: true
+
+    #
+    # 6. Konfiguracja LLM (jeśli wykryto)
+    #
+    - name: Sprawdź, czy wykryto LLM
+      ansible.builtin.set_fact:
+        has_llm: >-
+          {{ service_config.services | selectattr('is_llm_related', 'defined') | selectattr('is_llm_related') | list | length > 0 or
+             service_config.processes | selectattr('is_llm_related', 'defined') | selectattr('is_llm_related') | list | length > 0 }}
+
+    - name: Konfiguruj środowisko LLM
+      block:
+        - name: Utwórz katalog na dane LLM
+          ansible.builtin.file:
+            path: /opt/digital-twin/llm-data
+            state: directory
+            mode: "0755"
+
+        - name: Utwórz plik konfiguracyjny dla LLM
+          ansible.builtin.copy:
+            dest: /etc/digital-twin/llm-config.yaml
+            content: |
+              # Konfiguracja LLM wygenerowana przez system cyfrowego bliźniaka
+              # Wygenerowano: {{ ansible_date_time.iso8601 }}
+              llm:
+                enabled: true
+                data_dir: /opt/digital-twin/llm-data
+                services:
+                {{ service_config.services | selectattr('is_llm_related', 'defined') | selectattr('is_llm_related') | map('to_nice_yaml') | join('') | indent(2) }}
+                processes:
+                {{ service_config.processes | selectattr('is_llm_related', 'defined') | selectattr('is_llm_related') | map('to_nice_yaml') | join('') | indent(2) }}
+            mode: "0644"
+
+        - name: Ustaw zmienne środowiskowe dla LLM
+          ansible.builtin.lineinfile:
+            path: /etc/profile.d/system_profile.sh
+            line: "export DIGITAL_TWIN_LLM=true"
+
+      when: has_llm
+
+  post_tasks:
+    - name: Zapisz dziennik aktualizacji
+      ansible.builtin.lineinfile:
+        path: "{{ log_file }}"
+        line: "{{ ansible_date_time.iso8601 }} - Zaktualizowano stan VM - Usługi systemd: {{ service_config.services | selectattr('type', 'equalto', 'systemd') | list | length }}, Kontenery Docker: {{ service_config.services | selectattr('type', 'equalto', 'docker') | list | length }}, Procesy: {{ service_config.processes | length }}"
+        create: yes
+        mode: "0644"
+
+    - name: Generuj raport stanu
+      ansible.builtin.template:
+        src: status_report.j2
+        dest: "/var/lib/digital-twin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
+        mode: "0644"
+      vars:
+        status_systemd: "{{ ansible_facts.services | dict2items | selectattr('value.state', 'defined') | list | length }}"
+        status_docker: "{{ docker_ps.stdout_lines | default([]) | length }}"
+
+    - name: Utwórz link do najnowszego raportu
+      ansible.builtin.file:
+        src: "/var/lib/digital-twin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
+        dest: "/var/lib/digital-twin/status_report_latest.txt"
+        state: link
+        force: yes

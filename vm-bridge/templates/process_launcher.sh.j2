@@ -1,1 +1,51 @@
-# Szablon skryptu uruchamiającego proces
+#!/bin/bash
+# Skrypt wygenerowany automatycznie przez system cyfrowego bliźniaka
+# Proces: {{ item.name }} (PID: {{ item.pid }})
+# Uruchomiony dla użytkownika: {{ item.user | default('root') }}
+
+# Konfiguracja podstawowa
+set -e
+
+# Utworzenie katalogu roboczego
+{% if item.cwd is defined %}
+mkdir -p {{ item.cwd }}
+cd {{ item.cwd }}
+{% endif %}
+
+# Ustawienie czasu początku
+START_TIME=$(date +%s)
+echo "Uruchamianie procesu {{ item.name }} - $(date)"
+
+# Ustaw zmienne środowiskowe
+{% if item.environment is defined %}
+{% for env in item.environment %}
+export {{ env }}
+{% endfor %}
+{% endif %}
+
+# Konfiguracja dla procesu związanego z LLM
+{% if item.is_llm_related is defined and item.is_llm_related %}
+# Konfiguracja specyficzna dla LLM
+export DIGITAL_TWIN_LLM=true
+export DIGITAL_TWIN_LLM_ORIGINAL_PID={{ item.pid }}
+{% endif %}
+
+# Funkcja obsługi sygnałów
+function cleanup() {
+    echo "Zatrzymywanie procesu {{ item.name }} - $(date)"
+    exit 0
+}
+
+# Rejestracja obsługi sygnałów
+trap cleanup SIGINT SIGTERM
+
+# Uruchom proces z taką samą linią poleceń jak oryginał
+echo "Wykonywanie: {% if item.cmdline is defined and item.cmdline|length > 0 %}{{ item.cmdline|join(' ') }}{% else %}{{ item.name }}{% endif %}"
+
+{% if item.cmdline is defined and item.cmdline|length > 0 %}
+exec {{ item.cmdline|join(' ') }}
+{% else %}
+exec {{ item.name }}
+{% endif %}
+
+

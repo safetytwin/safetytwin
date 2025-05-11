@@ -1,0 +1,92 @@
+# Dokumentacja Infrastruktury
+
+**Wygenerowano:** {{ timestamp }}
+
+## Informacje o systemie
+
+- **Hostname:** {{ hardware.get("hostname", "unknown") }}
+- **System operacyjny:** {{ hardware.get("platform", "unknown") }} {{ hardware.get("platform_version", "") }}
+- **Kernel:** {{ hardware.get("kernel_version", "unknown") }}
+- **Czas pracy:** {{ hardware.get("uptime", 0) // 86400 }} dni, {{ (hardware.get("uptime", 0) % 86400) // 3600 }} godzin
+
+## Sprzęt
+
+### Procesor
+
+- **Model:** {{ hardware.get("cpu", {}).get("model", "unknown") }}
+- **Liczba rdzeni fizycznych:** {{ hardware.get("cpu", {}).get("cores_physical", 0) }}
+- **Liczba rdzeni logicznych:** {{ hardware.get("cpu", {}).get("count_logical", 0) }}
+- **Wykorzystanie:** {{ hardware.get("cpu", {}).get("usage_percent", 0) }}%
+
+### Pamięć
+
+- **Całkowita:** {{ hardware.get("memory", {}).get("total_gb", 0) }} GB
+- **Dostępna:** {{ hardware.get("memory", {}).get("available_gb", 0) }} GB
+- **Używana:** {{ hardware.get("memory", {}).get("used_gb", 0) }} GB ({{ hardware.get("memory", {}).get("percent", 0) }}%)
+
+### Dyski
+
+| Urządzenie | Punkt montowania | System plików | Pojemność | Używane | Wolne | Zapełnienie |
+|------------|------------------|---------------|-----------|---------|-------|-------------|
+{% for disk in hardware.get("disks", []) %}
+| {{ disk.get("device", "") }} | {{ disk.get("mountpoint", "") }} | {{ disk.get("fstype", "") }} | {{ disk.get("total_gb", 0) }} GB | {{ disk.get("used_gb", 0) }} GB | {{ disk.get("free_gb", 0) }} GB | {{ disk.get("percent", 0) }}% |
+{% endfor %}
+
+### Sieć
+
+| Interfejs | Adres MAC | Adresy IP | Wysłane | Otrzymane |
+|-----------|-----------|-----------|---------|-----------|
+{% for name, iface in hardware.get("network", {}).items() %}
+| {{ name }} | {{ iface.get("mac", "") }} | {{ iface.get("addresses", [])|join(", ") }} | {{ iface.get("bytes_sent", 0) // 1024 // 1024 }} MB | {{ iface.get("bytes_recv", 0) // 1024 // 1024 }} MB |
+{% endfor %}
+
+{% if hardware.get("gpu", {}) %}
+### GPU
+
+| Dostawca | Nazwa | Wykorzystanie | Pamięć |
+|----------|-------|---------------|--------|
+{% for vendor, devices in hardware.get("gpu", {}).items() %}
+{% for device in devices %}
+| {{ vendor }} | {{ device.get("name", "") }} | {{ device.get("utilization_percent", 0) }}% | {{ device.get("memory_used_mb", 0) }} MB / {{ device.get("memory_total_mb", 0) }} MB |
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+## Usługi
+
+### Usługi systemd
+
+| Nazwa | Status | PID | Czas pracy |
+|-------|--------|-----|------------|
+{% for service in services if service.get("type") == "systemd" %}
+| {{ service.get("name", "") }} | {{ service.get("status", "") }} | {{ service.get("pid", "") }} | {{ service.get("uptime_seconds", 0) // 3600 }}h {{ (service.get("uptime_seconds", 0) % 3600) // 60 }}m |
+{% endfor %}
+
+### Kontenery Docker
+
+| Nazwa | Obraz | Status | Porty | Wolumeny |
+|-------|-------|--------|-------|----------|
+{% for service in services if service.get("type") == "docker" %}
+| {{ service.get("name", "") }} | {{ service.get("image", "") }} | {{ service.get("status", "") }} | {% for port in service.get("ports", []) %}{{ port.get("host_ip", "") }}:{{ port.get("host_port", "") }}->{{ port.get("container_port", "") }}{% if not loop.last %}, {% endif %}{% endfor %} | {% for volume in service.get("volumes", []) %}{{ volume.get("source", "") }}:{{ volume.get("destination", "") }}{% if volume.get("read_only") %}:ro{% endif %}{% if not loop.last %}, {% endif %}{% endfor %} |
+{% endfor %}
+
+## Procesy
+
+### Procesy związane z LLM
+
+| PID | Nazwa | Użytkownik | CPU | Pamięć | Czas uruchomienia |
+|-----|-------|------------|-----|--------|-------------------|
+{% for process in processes if process.get("is_llm_related") %}
+| {{ process.get("pid", "") }} | {{ process.get("name", "") }} | {{ process.get("username", "") }} | {{ process.get("cpu_percent", 0) }}% | {{ process.get("memory_percent", 0) }}% | {{ process.get("create_time", "") }} |
+{% endfor %}
+
+### Najważniejsze procesy (wg CPU)
+
+| PID | Nazwa | Użytkownik | CPU | Pamięć | Liczba wątków |
+|-----|-------|------------|-----|--------|---------------|
+{% for process in (processes|sort(attribute='cpu_percent')|reverse)[:10] %}
+| {{ process.get("pid", "") }} | {{ process.get("name", "") }} | {{ process.get("username", "") }} | {{ process.get("cpu_percent", 0) }}% | {{ process.get("memory_percent", 0) }}% | {{ process.get("num_threads", 0) }} |
+{% endfor %}
+
+
+

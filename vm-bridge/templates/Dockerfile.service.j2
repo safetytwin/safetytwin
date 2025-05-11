@@ -1,0 +1,63 @@
+
+FROM {{ base_image }}
+
+# Automatycznie wygenerowany plik dla usługi: {{ service_name }}
+# Wygenerowano: {{ timestamp }}
+
+LABEL maintainer="Digital Twin System <digital-twin@localhost>"
+LABEL description="Obraz dla usługi {{ service_name }}"
+
+# Instalacja podstawowych narzędzi
+RUN apt-get update && apt-get install -y \
+    procps \
+    python3 \
+    python3-pip \
+    git \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+{% if service_config.get("type") == "docker" %}
+# Konfiguracja dla usługi Docker
+ENV SERVICE_TYPE=docker
+ENV ORIGINAL_IMAGE={{ service_config.get("image", "unknown") }}
+ENV SERVICE_NAME={{ service_name }}
+
+{% if service_config.get("environment") %}
+# Zmienne środowiskowe
+{% for env in service_config.get("environment") %}
+ENV {{ env }}
+{% endfor %}
+{% endif %}
+
+{% if service_config.get("ports") %}
+# Porty
+EXPOSE {% for port in service_config.get("ports") %}{{ port.get("container_port", "80").split("/")[0] }} {% endfor %}
+{% endif %}
+
+{% elif service_config.get("type") == "systemd" %}
+# Konfiguracja dla usługi systemd
+ENV SERVICE_TYPE=systemd
+ENV SERVICE_NAME={{ service_name }}
+
+{% if processes %}
+# Procesy związane z usługą
+{% for process in processes %}
+# Process: {{ process.get("name") }} (PID: {{ process.get("pid") }})
+# Command: {{ process.get("cmdline", [])|join(" ") }}
+{% endfor %}
+{% endif %}
+
+{% endif %}
+
+# Przygotowanie środowiska
+WORKDIR /app
+
+# Kopiuj skrypty inicjalizacyjne
+COPY init.sh /app/
+RUN chmod +x /app/init.sh
+
+# Podstawowa konfiguracja
+CMD ["/app/init.sh"]
+
+

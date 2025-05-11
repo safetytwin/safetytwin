@@ -1,1 +1,27 @@
-# Szablon usługi systemd dla procesu
+[Unit]
+Description=Digital Twin Process: {{ item.name }} (Original PID: {{ item.pid }})
+After=network.target
+{% if item.requires is defined %}
+Requires={{ item.requires }}
+{% endif %}
+
+[Service]
+Type=simple
+User={{ item.user | default('root') }}
+ExecStart=/tmp/process_{{ item.name }}_{{ item.pid }}.sh
+Restart=on-failure
+RestartSec=5
+{% if item.cwd is defined %}
+WorkingDirectory={{ item.cwd }}
+{% endif %}
+
+# Limitowanie zasobów, aby symulować oryginalne wykorzystanie
+{% if item.cpu_percent is defined %}
+CPUQuota={{ (item.cpu_percent * 1.5) | int }}%
+{% endif %}
+{% if item.memory_percent is defined and item.memory_limit_mb is defined %}
+MemoryLimit={{ item.memory_limit_mb }}M
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

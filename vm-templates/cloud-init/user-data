@@ -1,1 +1,55 @@
-# Konfiguracja użytkownika
+#cloud-config
+hostname: digital-twin-vm
+manage_etc_hosts: true
+
+users:
+  - name: root
+    lock_passwd: false
+    hashed_passwd: $6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD digital-twin@localhost
+  - name: digital-twin
+    gecos: Digital Twin User
+    groups: users,admin,wheel,sudo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    hashed_passwd: $6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD digital-twin@localhost
+
+ssh_pwauth: true
+disable_root: false
+chpasswd:
+  expire: false
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - python3
+  - python3-pip
+  - openssh-server
+  - ansible
+  - docker.io
+  - libvirt-clients
+  - libvirt-daemon-system
+  - python3-libvirt
+  - qemu-system
+  - qemu-utils
+  - curl
+  - wget
+  - git
+  - vim
+
+runcmd:
+  - systemctl enable docker
+  - systemctl start docker
+  - mkdir -p /etc/digital-twin
+  - echo "Digital Twin VM" > /etc/digital-twin/vm-info
+  - echo "Created: $(date)" >> /etc/digital-twin/vm-info
+  - usermod -aG docker digital-twin
+  - pip3 install docker pyyaml jinja2 libvirt-python paramiko deepdiff flask
+  - systemctl enable ssh
+  - systemctl start ssh
+
+
