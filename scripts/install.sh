@@ -741,6 +741,41 @@ show_summary() {
 main() {
   log "Rozpoczynanie instalacji systemu cyfrowego bliźniaka..."
 
+  # === DIAGNOSTYKA ŚCIEŻEK I PLIKÓW ===
+  log "[DIAG] Sprawdzanie kluczowych katalogów i plików..."
+  DIAG_OK=1
+  for DIR in "$INSTALL_DIR" "$CONFIG_DIR" "$STATE_DIR" "$STATE_DIR/images" "$STATE_DIR/cloud-init" "$LOG_DIR"; do
+    if [ -d "$DIR" ]; then
+      log "[DIAG] OK: Istnieje katalog $DIR"
+      if [ -w "$DIR" ]; then
+        log "[DIAG] OK: Katalog $DIR jest zapisywalny"
+      else
+        log_warning "[DIAG] UWAGA: Brak uprawnień do zapisu w $DIR!"
+        DIAG_OK=0
+      fi
+    else
+      log_warning "[DIAG] UWAGA: Brak katalogu $DIR!"
+      DIAG_OK=0
+    fi
+  done
+  if [ -f "$CONFIG_DIR/../.env" ]; then
+    log "[DIAG] OK: Plik .env istnieje"
+  else
+    log_warning "[DIAG] UWAGA: Brak pliku .env w $CONFIG_DIR/../.env"
+    DIAG_OK=0
+  fi
+  if [ -f "$STATE_DIR/images/ubuntu-base.img" ]; then
+    log "[DIAG] OK: Bazowy obraz VM istnieje ($STATE_DIR/images/ubuntu-base.img)"
+  else
+    log_warning "[DIAG] UWAGA: Brak bazowego obrazu VM ($STATE_DIR/images/ubuntu-base.img)"
+    DIAG_OK=0
+  fi
+  if [ $DIAG_OK -eq 1 ]; then
+    log "[DIAG] Wszystkie wymagane ścieżki i pliki są dostępne."
+  else
+    log_warning "[DIAG] Wykryto braki lub problemy z uprawnieniami. Instalacja będzie kontynuowana, ale mogą wystąpić błędy."
+  fi
+
   check_root
   check_requirements
   create_directories

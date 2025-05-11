@@ -1,10 +1,10 @@
 [Unit]
-Description=${DESCRIPTION}
+Description=SafetyTwin Timer
 
 [Timer]
-OnBootSec=${ON_BOOT_SEC}
-OnUnitActiveSec=${ON_ACTIVE_SEC}
-Unit=${UNIT}
+OnBootSec=2min
+OnUnitActiveSec=10min
+Unit=safetytwin.service
 
 [Install]
 WantedBy=timers.target

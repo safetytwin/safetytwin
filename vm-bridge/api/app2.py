@@ -342,8 +342,8 @@ def create_app(vm_mgr, state_str, service_gen):
     return app
 
 import sys
-sys.path.insert(0, '/home/tom/gitlab/safetytwin/safetytwin/vm-bridge')
-sys.path.insert(0, '/home/tom/gitlab/safetytwin/safetytwin/scripts')
+sys.path.insert(0, '$HOME/safetytwin/safetytwin/vm-bridge')
+sys.path.insert(0, '$HOME/safetytwin/safetytwin/scripts')
 from generate_services import render_service
 
 class ServiceGenerator:

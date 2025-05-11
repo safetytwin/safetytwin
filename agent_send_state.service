@@ -1,13 +1,13 @@
 [Unit]
-Description={{ DESCRIPTION }}
+Description=SafetyTwin Agent State Sender
 After=network.target
 
 [Service]
-Type={{ TYPE }}
-User={{ USER }}
-WorkingDirectory={{ WORKDIR }}
-ExecStart={{ EXECSTART }}
-Restart={{ RESTART }}
+Type=oneshot
+User=root
+WorkingDirectory=$HOME/safetytwin/safetytwin
+ExecStart=/bin/bash $HOME/safetytwin/safetytwin/agent_send_state.sh
+Restart=no
 
 [Install]
 WantedBy=multi-user.target

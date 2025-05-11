@@ -1,13 +1,17 @@
 [Unit]
-Description={{ DESCRIPTION }}
+Description=SafetyTwin Orchestrator (FastAPI)
 After=network.target
 
 [Service]
-Type={{ TYPE }}
-User={{ USER }}
-WorkingDirectory={{ WORKDIR }}
-ExecStart={{ EXECSTART }}
-Restart={{ RESTART }}
+Type=simple
+User=root
+WorkingDirectory=$HOME/safetytwin/safetytwin
+ExecStartPre=/usr/bin/mkdir -p /var/log/safetytwin
+ExecStartPre=/usr/bin/touch /var/log/safetytwin/orchestrator.log /var/log/safetytwin/orchestrator.err.log
+ExecStart=/usr/bin/python3 -m uvicorn orchestrator:app --host 0.0.0.0 --port 8000 --log-level info
+Restart=always
+#StandardOutput=append:/var/log/safetytwin/orchestrator.log
+#StandardError=append:/var/log/safetytwin/orchestrator.err.log
 
 [Install]
 WantedBy=multi-user.target

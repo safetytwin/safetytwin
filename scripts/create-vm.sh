@@ -13,11 +13,23 @@ VM_NAMES=("safetytwin-vm" "safetytwin-vm-2" "basic-test-vm")
 
 # === IMAGE OPTIONS ===
 IMAGES=(
+    "Ubuntu 24.04 Server Cloud Image|ubuntu|ubuntu|https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
     "Ubuntu 22.04 Server Cloud Image|ubuntu|ubuntu|https://cloud-images.ubuntu.com/releases/jammy/release/20250508/ubuntu-22.04-server-cloudimg-amd64.img"
     "Ubuntu 22.04 Minimal Cloud Image|ubuntu|ubuntu|https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img"
+    "Ubuntu 20.04 Server Cloud Image|ubuntu|ubuntu|https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img"
     "Debian 12 Bookworm Cloud Image|debian|debian|https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+    "Debian 11 Bullseye Cloud Image|debian|debian|https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-genericcloud-amd64.qcow2"
     "CentOS 9 Stream Cloud Image|centos|centos|https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
     "Rocky Linux 9 Cloud Image|rocky|rocky|https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
+    "Rocky Linux 8 Cloud Image|rocky|rocky|https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud.latest.x86_64.qcow2"
+    "AlmaLinux 9 Cloud Image|almalinux|almalinux|https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
+    "AlmaLinux 8 Cloud Image|almalinux|almalinux|https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
+    "Fedora 40 Cloud Image|fedora|fedora|https://download.fedoraproject.org/pub/fedora/linux/releases/40/Cloud/x86_64/images/Fedora-Cloud-Base-40-1.14.x86_64.qcow2"
+    "Fedora 39 Cloud Image|fedora|fedora|https://download.fedoraproject.org/pub/fedora/linux/releases/39/Cloud/x86_64/images/Fedora-Cloud-Base-39-1.5.x86_64.qcow2"
+    "openSUSE Leap 15.5 Cloud Image|opensuse|opensuse|https://download.opensuse.org/repositories/Cloud:/Images:/Leap_15.5/images/openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"
+    "Oracle Linux 9 Cloud Image|oracle|oracle|https://yum.oracle.com/ol9/cloud/x86_64/oraclelinux-9-cloud-latest.x86_64.qcow2"
+    "Oracle Linux 8 Cloud Image|oracle|oracle|https://yum.oracle.com/ol8/cloud/x86_64/oraclelinux-8-cloud-latest.x86_64.qcow2"
+    "Arch Linux Cloud Image|arch|arch|https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2"
 )
 
 ENV_FILE="$(dirname "$0")/../.env"
@@ -115,6 +127,10 @@ runcmd:
   - cat /etc/netplan/*.yaml > /dev/ttyS0
 EOF
     cloud-localds "$CLOUD_INIT_ISO" "$CLOUD_INIT_CFG"
+    if [ $? -ne 0 ] || [ ! -f "$CLOUD_INIT_ISO" ]; then
+        log "ERROR: Nie udało się utworzyć ISO cloud-init dla $VM ($CLOUD_INIT_ISO)!"
+        continue
+    fi
     log "Creating image for $VM..."
     if [ ! -f "$BASE_IMAGE" ]; then
         log "ERROR: Base image $BASE_IMAGE not found. Aborting."
@@ -125,6 +141,10 @@ EOF
         continue
     fi
     qemu-img create -f qcow2 -b "$BASE_IMAGE" -F qcow2 "$VM_IMAGE" 20G
+    if [ $? -ne 0 ] || [ ! -f "$VM_IMAGE" ]; then
+        log "ERROR: Nie udało się utworzyć obrazu $VM_IMAGE!"
+        continue
+    fi
 
     log "Defining and starting $VM..."
     virt-install --name "$VM" \
@@ -135,10 +155,19 @@ EOF
         --network network=default \
         --graphics none --noautoconsole \
         --console pty,target_type=serial --serial pty \
-        --import || {  # Add serial console for virsh console diagnostics
-            log "ERROR: virt-install failed for $VM. Skipping."
-            continue
-        }
+        --import 2>&1 | tee -a "$LOGFILE"
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        log "ERROR: virt-install failed for $VM. Skipping. Sprawdzam logi QEMU..."
+        QEMU_LOG="/var/log/libvirt/qemu/${VM}.log"
+        if [ -f "$QEMU_LOG" ]; then
+            log "--- QEMU log for $VM ---"
+            tail -n 40 "$QEMU_LOG" | tee -a "$LOGFILE"
+            log "--- END QEMU log ---"
+        else
+            log "Brak logu QEMU dla $VM ($QEMU_LOG)"
+        fi
+        continue
+    fi
 
     log "Waiting for $VM to appear in virsh list..."
     sleep 10

@@ -1,12 +1,12 @@
 [Unit]
-Description=SafetyTwin Agent State Sender
+Description=Periodic SSH VM Connectivity Check
 After=network.target
 
 [Service]
 Type=oneshot
 User=root
 WorkingDirectory=$HOME/safetytwin/safetytwin
-ExecStart=/bin/bash $HOME/safetytwin/safetytwin/agent_send_state.sh
+ExecStart=/bin/bash $HOME/safetytwin/safetytwin/ssh_vm_check.sh
 Restart=no
 
 [Install]

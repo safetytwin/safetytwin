@@ -27,14 +27,52 @@ for vm in $(virsh list --all --name); do
         fi
     done
     log "Undefining $vm..."
-    virsh undefine --remove-all-storage "$vm" || log "Warning: failed to undefine $vm"
-    # Clean up orphaned cloud-init ISO if present
-    ISO_PATH="/var/lib/safetytwin/cloud-init/cloud-init.iso"
+    virsh undefine "$vm" || log "Warning: failed to undefine $vm (może są snapshoty?)"
+    # Jeśli nadal nie można usunąć, spróbuj --remove-all-storage
+    if virsh domuuid "$vm" &>/dev/null; then
+        log "Ponowna próba z --remove-all-storage dla $vm..."
+        virsh undefine --remove-all-storage "$vm" || log "Warning: failed to undefine $vm z --remove-all-storage"
+    fi
+    # Usuwanie orphaned cloud-init ISO dla tej VM
+    ISO_PATH="/var/lib/safetytwin/cloud-init/${vm}-cloud-init.iso"
     if [ -f "$ISO_PATH" ]; then
         log "Removing orphaned ISO: $ISO_PATH"
-        rm -f "$ISO_PATH"
+        rm -f "$ISO_PATH" || log "Warning: failed to remove $ISO_PATH"
     fi
+    # Usuwanie orphaned .lck i .qcow2 jeśli VM nie istnieje
+    QCOW_PATH="/var/lib/safetytwin/images/${vm}.qcow2"
+    LCK_PATH="/var/lib/safetytwin/images/${vm}.qcow2.lck"
+    if ! virsh list --all --name | grep -q "^$vm$"; then
+        if [ -f "$QCOW_PATH" ]; then
+            log "Removing orphaned disk: $QCOW_PATH"
+            rm -f "$QCOW_PATH" || log "Warning: failed to remove $QCOW_PATH"
+        fi
+        if [ -f "$LCK_PATH" ]; then
+            log "Removing orphaned lock: $LCK_PATH"
+            rm -f "$LCK_PATH" || log "Warning: failed to remove $LCK_PATH"
+        fi
+    fi
+
 done
+
+# Dodatkowe czyszczenie orphaned ISO (pozostałe)
+for iso in /var/lib/safetytwin/cloud-init/*.iso; do
+    if [ -f "$iso" ]; then
+        log "Removing orphaned ISO: $iso"
+        rm -f "$iso" || log "Warning: failed to remove $iso"
+    fi
+
+done
+
+# Naprawa uprawnień do katalogów cloud-init i images
+if [ -d "/var/lib/safetytwin/cloud-init" ]; then
+    sudo chown -R $(whoami):$(whoami) /var/lib/safetytwin/cloud-init 2>/dev/null || log "Warning: failed to chown cloud-init"
+    sudo chmod -R u+rwX /var/lib/safetytwin/cloud-init 2>/dev/null || log "Warning: failed to chmod cloud-init"
+fi
+if [ -d "/var/lib/safetytwin/images" ]; then
+    sudo chown -R $(whoami):$(whoami) /var/lib/safetytwin/images 2>/dev/null || log "Warning: failed to chown images"
+    sudo chmod -R u+rwX /var/lib/safetytwin/images 2>/dev/null || log "Warning: failed to chmod images"
+fi
 
 log "Removing all storage pools..."
 for pool in $(virsh pool-list --all --name); do
@@ -61,7 +99,7 @@ virsh pool-autostart default || true
 virsh pool-start default || true
 
 log "Recreating SafetyTwin environment (VMs, etc)..."
-bash /home/tom/gitlab/safetytwin/safetytwin/scripts/create-vm.sh | tee -a "$LOG"
+bash $HOME/safetytwin/safetytwin/scripts/create-vm.sh | tee -a "$LOG"
 
 log "Restarting orchestrator and agent services..."
 sudo systemctl restart orchestrator.service

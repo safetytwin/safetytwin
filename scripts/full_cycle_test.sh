@@ -1,4 +1,13 @@
 #!/bin/bash
+# Pełny reset środowiska libvirt
+if [ -f "scripts/reset_libvirt_env.sh" ]; then
+    echo "[INIT] Resetuję środowisko libvirt do zera (scripts/reset_libvirt_env.sh)..."
+    sudo bash scripts/reset_libvirt_env.sh
+    echo "[INIT] Środowisko libvirt wyczyszczone."
+else
+    echo "[WARN] Brak scripts/reset_libvirt_env.sh! Nie wykonano pełnego resetu środowiska."
+fi
+
 # Full cycle test: install, diagnose, shutdown, reset, recreate, diagnose again
 # For rapid validation and debugging of the whole SafetyTwin stack
 
