@@ -64,6 +64,13 @@ Ten dokument zawiera szczegółowe informacje na temat instalacji i konfiguracji
 
 ## Wybór obrazu bazowego i użytkownika VM
 
+> **WAŻNE:** Skrypt `create-vm.sh` należy uruchamiać z uprawnieniami root (przez `sudo`), ponieważ tworzy pliki i obrazy w katalogach systemowych (`/var/lib/safetytwin`). W przeciwnym razie pojawią się błędy z uprawnieniami (Permission denied).
+>
+> **Przykład uruchomienia:**
+> ```bash
+> sudo bash scripts/create-vm.sh
+> ```
+
 Podczas pierwszego uruchomienia skryptu `create-vm.sh` możesz wybrać obraz bazowy, użytkownika i hasło. Wybrane ustawienia zostaną zapisane w pliku `.env` i będą używane domyślnie przy kolejnych uruchomieniach.
 
 | Nr | System/Obraz                                    | Domyślny użytkownik | Hasło   | Link                                                                 |
