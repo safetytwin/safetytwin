@@ -411,10 +411,6 @@ For advanced cloud-init configurations, edit the `cat > "$USER_DATA"` section of
 - The default configuration uses password authentication with a known password
 - For production systems, consider:
   - Using SSH keys instead of passwords
-  - Setting unique passwords
-  - Implementing proper network isolation
-  - Disabling root access
-
 
 ## Updated preinstall.sh with Enhanced Disk Access Configuration
 

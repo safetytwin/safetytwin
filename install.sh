@@ -109,20 +109,21 @@ check_requirements() {
   # Instalacja narzędzi wymaganych przez skrypty diagnostyczne i narzędziowe
   case "$DISTRO" in
     ubuntu|debian)
-      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
+      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk, python3, python3-pip, python3-venv, curl, ansible, libvirt-clients, libvirt-daemon-system, qemu-kvm, qemu-utils, golang..."
       sudo apt-get update
-      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep gawk
+      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep gawk python3 python3-pip python3-venv curl ansible libvirt-clients libvirt-daemon-system qemu-kvm qemu-utils golang
+      log_success "Zainstalowano wszystkie wymagane narzędzia systemowe (awk → gawk)."
       ;;
     centos|rhel|fedora)
-      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute, cloud-utils, expect, lsof, jq, sed, grep, awk..."
-      yum install -y whois sudo net-tools iproute cloud-utils expect lsof jq sed grep awk
+      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute, cloud-utils, expect, lsof, jq, sed, grep, awk, python3, python3-pip, python3-venv, curl, ansible, libvirt-client, libvirt-daemon-system, qemu-kvm, qemu-img, golang..."
+      sudo yum install -y whois sudo net-tools iproute cloud-utils expect lsof jq sed grep awk python3 python3-pip python3-venv curl ansible libvirt-client libvirt-daemon-system qemu-kvm qemu-img golang -y
       ;;
     arch)
       log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
       pacman -Syu --noconfirm whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep awk
       ;;
     *)
-      log_warning "Nieznana dystrybucja: $DISTRO. Upewnij się, że wymagane narzędzia są zainstalowane."
+      log_warning "Nieznana dystrybucja: $DISTRO. Spróbuj zainstalować wymagane narzędzia ręcznie."
       ;;
   esac
 
@@ -221,14 +222,32 @@ check_requirements() {
     log "Instalacja pakietów Python przez apt..."
     apt-get install -y python3-libvirt python3-flask python3-flask-cors python3-yaml python3-paramiko python3-gunicorn python3-werkzeug python3-pytest
     log "Instalacja deepdiff i ansible przez pip..."
-    pip3 install --break-system-packages deepdiff ansible
+    pip3 install -q --break-system-packages deepdiff ansible
   else
     log "Instalacja pakietów Python przez pip..."
-    pip3 install --upgrade pip
-    pip3 install libvirt-python flask flask-cors pyyaml deepdiff paramiko ansible gunicorn werkzeug pytest
+    pip3 install -q --upgrade pip
+    pip3 install -q fastapi uvicorn pyyaml jinja2 flask deepdiff paramiko libvirt-python docker || true
+    log_success "Wszystkie zależności Python zostały zainstalowane."
   fi
 
   log_success "Wszystkie wymagania systemowe i zależności Python zostały zainstalowane."
+
+# Instalacja i aktywacja usługi orchestratora i timera agenta
+if [ -f orchestrator.service ] && [ -f agent_send_state.service ] && [ -f agent_send_state.timer ]; then
+  log "Kopiuję pliki orchestrator.service, agent_send_state.service, agent_send_state.timer do /etc/systemd/system/ ..."
+  sudo cp orchestrator.service /etc/systemd/system/
+  sudo cp agent_send_state.service /etc/systemd/system/
+  sudo cp agent_send_state.timer /etc/systemd/system/
+  log "Przeładowuję systemd i aktywuję usługi..."
+  sudo systemctl daemon-reload
+  sudo systemctl enable orchestrator.service
+  sudo systemctl start orchestrator.service
+  sudo systemctl enable agent_send_state.timer
+  sudo systemctl start agent_send_state.timer
+  log_success "Usługi orchestratora i agenta zostały aktywowane."
+else
+  log_warning "Brak plików orchestrator.service, agent_send_state.service lub agent_send_state.timer. Usługi nie zostały aktywowane automatycznie."
+fi
 }
 
 # Instalacja Ansible
