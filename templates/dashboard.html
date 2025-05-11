@@ -36,6 +36,7 @@
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
         <li class="nav-item"><a class="nav-link {% if request.url.path=='/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/vm_grid' %}active{% endif %}" href="/vm_grid">Grid VM</a></li>
         <li class="nav-item"><a class="nav-link" href="#history">Historia zmian</a></li>
         <li class="nav-item"><a class="nav-link" href="#snapshots">Snapshoty VM</a></li>
         <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>
@@ -162,6 +163,7 @@ document.getElementById('create-vm-btn').onclick = function() {
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav">
         <li class="nav-item"><a class="nav-link {% if request.url.path=='/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/vm_grid' %}active{% endif %}" href="/vm_grid">Grid VM</a></li>
         <li class="nav-item"><a class="nav-link" href="#history">Historia zmian</a></li>
         <li class="nav-item"><a class="nav-link" href="#snapshots">Snapshoty VM</a></li>
         <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>

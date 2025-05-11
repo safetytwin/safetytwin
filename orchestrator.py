@@ -1,6 +1,8 @@
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
+import subprocess, os
+from dotenv import load_dotenv
 import json, subprocess, difflib, os
 from datetime import datetime
 
@@ -121,6 +123,66 @@ def create_vm():
         return {"success": False, "error": str(e)}
 
 # --- Dashboard ---
+@app.get("/vm_grid", response_class=HTMLResponse)
+def vm_grid(request: Request):
+    # Pobierz listę VM
+    vms = []
+    try:
+        out = subprocess.check_output(['virsh', 'list', '--all'], encoding='utf-8', errors='ignore')
+        for line in out.splitlines()[2:]:
+            parts = line.strip().split()
+            if len(parts) >= 2:
+                vms.append(parts[1])
+    except Exception:
+        pass
+    # Pobierz snapshoty dla każdej VM (max 3 najnowsze)
+    vm_snaps = {}
+    for vm in vms:
+        snaps = []
+        try:
+            out = subprocess.check_output(['virsh', 'snapshot-list', vm, '--tree'], encoding='utf-8', errors='ignore')
+            for line in out.splitlines():
+                if line.strip() and not line.startswith("Name") and not line.startswith("-"):
+                    parts = line.split()
+                    name = parts[0]
+                    snaps.append(name)
+        except Exception:
+            pass
+        vm_snaps[vm] = snaps[:3]
+    return templates.TemplateResponse("vm_grid.html", {"request": request, "vms": vms, "vm_snaps": vm_snaps})
+
+@app.post("/install_pkg/{vm_name}")
+def install_pkg(vm_name: str, pkg: str = None):
+    # Zainstaluj pakiet przez SSH na VM
+    try:
+        # Wczytaj dane logowania z .env
+        env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
+        load_dotenv(dotenv_path=env_path)
+        user = os.getenv('VM_USER', 'ubuntu')
+        password = os.getenv('VM_PASS', 'ubuntu')
+        # Instalacja przez sshpass+ssh
+        cmd = [
+            'sshpass', '-p', password,
+            'ssh', '-o', 'StrictHostKeyChecking=no', f'{user}@{vm_name}',
+            f'sudo apt-get update && sudo apt-get install -y {pkg}'
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        if proc.returncode == 0:
+            return {"success": True}
+        return {"success": False, "error": proc.stderr or proc.stdout}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/snapshots/revert/{vm_name}/{snap_name}")
+def revert_snapshot_grid(vm_name: str, snap_name: str):
+    try:
+        proc = subprocess.run(["virsh", "snapshot-revert", vm_name, snap_name], capture_output=True, text=True, timeout=60)
+        if proc.returncode == 0:
+            return {"success": True}
+        return {"success": False, "error": proc.stderr or proc.stdout}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request):
     # Parametry sortowania/filtrowania snapshotów
