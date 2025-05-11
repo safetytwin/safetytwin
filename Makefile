@@ -364,12 +364,8 @@ clean:
 	@echo "Czyszczenie zakończone pomyślnie."
 
 test:
-	@echo "Uruchamianie testów..."
-	
-	# Testy agenta
-	cd agent && go test ./...
-	
-	# Testy VM Bridge
-	cd vm-bridge && python3 -m unittest discover -s tests
-	
-	@echo "Testy zakończone pomyślnie."
+	@echo "Uruchamianie testów Python (VM Bridge)..."
+	cd vm-bridge && pytest tests/ --maxfail=3 --disable-warnings -v || exit 1
+	@echo "Uruchamianie testów Go (Agent)..."
+	cd agent && go test ./... -v || exit 1
+	@echo "Wszystkie testy zakończone powodzeniem."

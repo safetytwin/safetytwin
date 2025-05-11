@@ -51,39 +51,102 @@ check_root() {
   fi
 }
 
-# Sprawdzenie wymagań systemowych
+# Sprawdzenie wymagań systemowych i instalacja zależności
 check_requirements() {
-  log "Sprawdzanie wymagań systemowych..."
+  log "Sprawdzanie i instalacja wymagań systemowych..."
 
-  # Sprawdź libvirt i qemu-kvm
-  if ! command -v virsh &> /dev/null; then
-    log_error "Libvirt nie jest zainstalowany. Zainstaluj go przy użyciu menedżera pakietów."
+  # Rozpoznaj dystrybucję Linuxa
+  if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+  else
+    log_error "Nie można rozpoznać dystrybucji Linuxa. Przerwano instalację."
     exit 1
   fi
 
-  if ! command -v qemu-img &> /dev/null; then
+  # Ustal menedżer pakietów i pakiety
+  PKG_UPDATE=""
+  PKG_INSTALL=""
+  PKGS=""
+  case "$DISTRO" in
+     ubuntu|debian)
+      PKG_UPDATE="apt-get update"
+      PKG_INSTALL="apt-get install -y"
+      PKGS="libvirt-dev libvirt-daemon-system libvirt-clients qemu-kvm python3 python3-dev python3-pip gcc make pkg-config genisoimage"
+      LIBVIRT_SERVICE="libvirtd"
+      ;;
+    centos|rhel|fedora)
+      PKG_UPDATE="dnf makecache || yum makecache"
+      PKG_INSTALL="dnf install -y || yum install -y"
+      PKGS="libvirt-devel libvirt qemu-kvm python3 python3-devel python3-pip gcc make pkgconf-pkg-config genisoimage"
+      LIBVIRT_SERVICE="libvirtd"
+      ;;
+    arch)
+      PKG_UPDATE="pacman -Sy"
+      PKG_INSTALL="pacman -S --noconfirm"
+      PKGS="libvirt qemu python python-pip gcc make pkgconf cdrtools"
+      LIBVIRT_SERVICE="libvirtd"
+      ;;
+    opensuse*|suse)
+      PKG_UPDATE="zypper refresh"
+      PKG_INSTALL="zypper install -y"
+      PKGS="libvirt-devel libvirt qemu python3 python3-devel python3-pip gcc make pkgconf-pkg-config genisoimage"
+      LIBVIRT_SERVICE="libvirtd"
+      ;;
+    *)
+      log_error "Nieobsługiwana dystrybucja Linuxa: $DISTRO. Przerwano instalację."
+      exit 1
+      ;;
+  esac
+
+  # Instalacja pakietów systemowych
+  log "Aktualizacja repozytoriów..."
+  eval $PKG_UPDATE
+  log "Instalacja pakietów: $PKGS"
+  eval $PKG_INSTALL $PKGS
+
+  # Włącz i uruchom usługę libvirtd jeśli jest dostępna
+  if systemctl list-unit-files | grep -q "$LIBVIRT_SERVICE"; then
+    log "Włączanie i uruchamianie usługi $LIBVIRT_SERVICE..."
+    systemctl enable --now $LIBVIRT_SERVICE || true
+    systemctl start $LIBVIRT_SERVICE || true
+    systemctl status $LIBVIRT_SERVICE --no-pager || true
+  else
+    log_warning "Usługa $LIBVIRT_SERVICE nie jest dostępna na tym systemie."
+  fi
+
+  # Sprawdź libvirt, virsh, qemu-kvm i usługę libvirtd
+  if ! command -v virsh &> /dev/null; then
+    log_error "Libvirt/virsh nie jest zainstalowany lub nie jest w PATH. Spróbuj ponownie lub sprawdź instalację."
+    exit 1
+  fi
+  if ! command -v qemu-system-x86_64 &> /dev/null; then
     log_error "QEMU nie jest zainstalowany. Zainstaluj go przy użyciu menedżera pakietów."
     exit 1
   fi
-
-  # Sprawdź Ansible
-  if ! command -v ansible &> /dev/null; then
-    log_warning "Ansible nie jest zainstalowany. Instalowanie..."
-    install_ansible
+  if ! systemctl is-active --quiet $LIBVIRT_SERVICE; then
+    log_error "Usługa $LIBVIRT_SERVICE nie działa. Spróbuj: sudo systemctl start $LIBVIRT_SERVICE"
+    exit 1
   fi
-
-  # Sprawdź Python
-  if ! command -v python3 &> /dev/null; then
-    log_error "Python 3 nie jest zainstalowany. Zainstaluj go przy użyciu menedżera pakietów."
+  # Sprawdź pip
+  if ! command -v pip3 &> /dev/null; then
+    log_error "pip3 nie jest zainstalowany. Zainstaluj go przy użyciu menedżera pakietów."
     exit 1
   fi
 
-  # Sprawdź Go (dla agenta)
-  if ! command -v go &> /dev/null; then
-    log_warning "Go nie jest zainstalowany. Agent zostanie zainstalowany z wersji skompilowanej."
+  # Instalacja zależności Python (VM Bridge)
+  if [[ "$DISTRO" == "ubuntu" || "$DISTRO" == "debian" ]]; then
+    log "Instalacja pakietów Python przez apt..."
+    apt-get install -y python3-libvirt python3-flask python3-flask-cors python3-yaml python3-paramiko python3-gunicorn python3-werkzeug python3-pytest
+    log "Instalacja deepdiff i ansible przez pip..."
+    pip3 install --break-system-packages deepdiff ansible
+  else
+    log "Instalacja pakietów Python przez pip..."
+    pip3 install --upgrade pip
+    pip3 install libvirt-python flask flask-cors pyyaml deepdiff paramiko ansible gunicorn werkzeug pytest
   fi
 
-  log_success "Wszystkie wymagania systemowe spełnione."
+  log_success "Wszystkie wymagania systemowe i zależności Python zostały zainstalowane."
 }
 
 # Instalacja Ansible
@@ -112,14 +175,86 @@ install_ansible() {
 
 # Tworzenie katalogów
 create_directories() {
-  log "Tworzenie katalogów instalacyjnych..."
+  log "Tworzenie katalogów..."
 
   mkdir -p "$INSTALL_DIR"
   mkdir -p "$CONFIG_DIR"
   mkdir -p "$STATE_DIR"
   mkdir -p "$LOG_DIR"
 
-  log_success "Katalogi utworzone pomyślnie."
+  log_success "Katalogi utworzone."
+}
+
+# Konfiguracja monitoringu storage w cronie
+define_cron_monitor() {
+  log "Konfiguracja monitoringu storage w cronie..."
+  # Upewnij się, że katalog monitorowany istnieje
+  mkdir -p /var/lib/digital-twin
+  sed 's|/var/lib/vm-bridge|/var/lib/digital-twin|g' vm-bridge/utils/monitor_storage.sh > /usr/local/bin/monitor_storage.sh
+  chmod +x /usr/local/bin/monitor_storage.sh
+  # Dodaj do crona root jeśli nie istnieje
+  if ! crontab -l | grep -q '/usr/local/bin/monitor_storage.sh'; then
+    (crontab -l 2>/dev/null; echo "0 * * * * /usr/local/bin/monitor_storage.sh >> /var/log/vm-bridge-storage.log 2>&1") | crontab -
+    log_success "Dodano zadanie monitoringu storage do crona."
+  else
+    log "Zadanie monitoringu storage już istnieje w cronie."
+  fi
+}
+
+# Instalacja CLI safetytwin
+install_safetytwin_cli() {
+  log "Instalacja narzędzia CLI safetytwin..."
+  cat <<'EOF' > /usr/local/bin/safetytwin
+#!/bin/bash
+ACTION="$1"
+LOGFILE="/var/log/digital-twin/vm-bridge.log"
+AGENT_SERVICE="digital-twin-agent.service"
+MONITOR_SCRIPT="/usr/local/bin/monitor_storage.sh"
+
+case "$ACTION" in
+  status)
+    echo "== Status usług =="
+    systemctl status digital-twin-agent.service --no-pager
+    systemctl status digital-twin-bridge.service --no-pager
+    ;;
+  agent-log)
+    echo "== Logi agenta =="
+    journalctl -u digital-twin-agent.service -n 50 --no-pager
+    ;;
+  bridge-log)
+    echo "== Logi VM Bridge =="
+    tail -n 50 "$LOGFILE"
+    ;;
+  cron-list)
+    echo "== Zadania cron dla root =="
+    crontab -l | grep monitor_storage.sh || echo "Brak zadania monitor_storage.sh w cronie."
+    ;;
+  cron-status)
+    pgrep -fl monitor_storage.sh && echo "monitor_storage.sh działa" || echo "monitor_storage.sh nie działa (czeka na kolejne uruchomienie przez cron)"
+    ;;
+  cron-remove)
+    crontab -l | grep -v monitor_storage.sh | crontab -
+    echo "Usunięto zadanie monitor_storage.sh z crona."
+    ;;
+  cron-add)
+    if ! crontab -l | grep -q '/usr/local/bin/monitor_storage.sh'; then
+      (crontab -l 2>/dev/null; echo "0 * * * * /usr/local/bin/monitor_storage.sh >> /var/log/vm-bridge-storage.log 2>&1") | crontab -
+      echo "Dodano zadanie monitor_storage.sh do crona."
+    else
+      echo "Zadanie monitor_storage.sh już istnieje w cronie."
+    fi
+    ;;
+  what)
+    echo "== Ostatnie działania aplikacji (log) =="
+    tail -n 20 "$LOGFILE"
+    ;;
+  *)
+    echo "Użycie: safetytwin [status|agent-log|bridge-log|cron-list|cron-status|cron-add|cron-remove|what]"
+    ;;
+esac
+EOF
+  chmod +x /usr/local/bin/safetytwin
+  log_success "CLI safetytwin zainstalowane. Użyj: safetytwin [status|agent-log|bridge-log|cron-list|cron-status|cron-add|cron-remove|what]"
 }
 
 # Konfiguracja VM Bridge
@@ -654,6 +789,8 @@ main() {
   check_root
   check_requirements
   create_directories
+  define_cron_monitor
+  install_safetytwin_cli
   configure_vm_bridge
   install_agent
   install_vm_bridge_service

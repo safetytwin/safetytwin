@@ -9,25 +9,27 @@ VM Bridge to komponent systemu SafetyTwin, który zarządza komunikacją między
 - Aplikowanie konfiguracji usług za pomocą Ansible
 - Zarządzanie stanem maszyny wirtualnej
 - API REST do interakcji z VM Bridge
+- Modularne narzędzia: konfiguracja, logowanie, wysyłanie stanu (utils)
+- Testy jednostkowe i integracyjne
+- Dokumentacja API
 
 ## Struktura projektu
 
 ```
 vm-bridge/
-├── api/                   # Kod API REST
-│   ├── app.py             # Aplikacja Flask
-│   ├── models.py          # Modele danych
-│   ├── routes.py          # Definicje tras API
-│   └── run.py             # Skrypt uruchamiający API
+├── main.py                # Główny serwer Flask (API REST)
+├── utils/                 # Narzędzia pomocnicze (config, sender, logging, state_store)
+│   ├── config.py
+│   ├── sender.py
+│   ├── logging.py
+│   └── state_store.py
 ├── ansible/               # Pliki Ansible do konfiguracji VM
 │   ├── apply_services.yml # Główny playbook Ansible
-│   ├── inventory.yml      # Szablon pliku inwentarza
 │   └── templates/         # Szablony Jinja2 dla Ansible
-│       ├── process_launcher.sh.j2      # Szablon skryptu uruchamiającego proces
-│       └── process_service.service.j2  # Szablon usługi systemd
-├── vm_bridge.py           # Główna klasa VMBridge
-├── run_api.py             # Skrypt uruchamiający API
-└── requirements.txt       # Zależności projektu
+├── requirements.txt       # Zależności projektu
+├── setup.py               # Instalator pakietu Python
+├── README.md              # Dokumentacja komponentu VM Bridge
+└── tests/                 # Testy jednostkowe i integracyjne
 ```
 
 ## Instalacja
@@ -35,10 +37,14 @@ vm-bridge/
 1. Zainstaluj wymagane zależności:
 
 ```bash
+pip install .
+```
+lub
+```bash
 pip install -r requirements.txt
 ```
 
-2. Utwórz plik konfiguracyjny `/etc/vm-bridge.yaml` z następującą zawartością:
+2. Utwórz plik konfiguracyjny `/etc/digital-twin/vm-bridge.yaml` z przykładową zawartością:
 
 ```yaml
 libvirt_uri: "qemu:///system"
@@ -48,6 +54,7 @@ ansible_inventory: "/etc/vm-bridge/inventory.yml"
 ansible_playbook: "/etc/vm-bridge/apply_services.yml"
 state_dir: "/var/lib/vm-bridge/states"
 max_snapshots: 10
+bridge_url: "http://localhost:5678/api/v1/update_state"
 ```
 
 ## Uruchamianie API
@@ -55,10 +62,15 @@ max_snapshots: 10
 Aby uruchomić API VM Bridge, wykonaj:
 
 ```bash
-python run_api.py --host 0.0.0.0 --port 5678 --vm-name digital-twin
+python main.py --config /etc/digital-twin/vm-bridge.yaml --port 5678 --log /tmp/vm-bridge.log --verbose
 ```
 
 Parametry:
+- `--config`: Ścieżka do pliku konfiguracyjnego (domyślnie: `/etc/digital-twin/vm-bridge.yaml`)
+- `--port`: Port nasłuchiwania (domyślnie: 5678)
+- `--log`: Ścieżka do pliku logów (domyślnie: `/var/log/digital-twin/vm-bridge.log`)
+- `--verbose`: Szczegółowe logowanie
+
 - `--host`: Host do nasłuchiwania (domyślnie: 0.0.0.0)
 - `--port`: Port do nasłuchiwania (domyślnie: 5678)
 - `--vm-name`: Nazwa maszyny wirtualnej (domyślnie: digital-twin)
