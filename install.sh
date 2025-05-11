@@ -1,8 +1,26 @@
-# Główny skrypt instalacyjny
 #!/bin/bash
-# Skrypt instalacyjny systemu cyfrowego bliźniaka
-# Autor: Tom Sapletta
-# Data: 2025-05-10
+# install.sh - Main installer for SafetyTwin Digital Twin System
+# Author: Tom Sapletta
+# Last updated: 2025-05-11
+#
+# Purpose:
+#   This script automates the installation and configuration of the SafetyTwin platform, including VM provisioning, service setup, and agent installation.
+#
+# Usage:
+#   sudo bash install.sh
+#
+# What it does:
+#   - Checks system requirements and installs dependencies
+#   - Downloads and prepares Ubuntu cloud images
+#   - Sets up directories and configuration files
+#   - Installs and configures VM Bridge, agent, and CLI
+#   - Provisions a base VM using libvirt/QEMU/KVM
+#   - Configures cloud-init for VM initialization
+#   - Sets up monitoring and cron jobs
+#
+# This script should be run on the host (controller) system. For diagnostics and VM checks, see diagnostics.sh and diagnostics_download.sh.
+#
+# Contact: tom@sapletta.com
 
 set -e
 

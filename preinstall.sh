@@ -1,7 +1,24 @@
 #!/bin/bash
-# preinstall.sh - Minimal VM/cloud-init test for troubleshooting SSH and provisioning
+# preinstall.sh - Minimal VM/cloud-init provisioning and troubleshooting tool for SafetyTwin
 # Author: Tom Sapletta
-# Date: 2025-05-11
+# Last updated: 2025-05-11
+#
+# Purpose:
+#   This script creates and configures a minimal Ubuntu VM for SafetyTwin, with robust cloud-init and SSH setup for troubleshooting and validation.
+#
+# Usage:
+#   sudo bash preinstall.sh [VM_NAME]
+#
+# What it does:
+#   - Downloads official Ubuntu cloud images if needed
+#   - Creates a VM disk image and cloud-init ISO
+#   - Configures user, password, networking, and SSH
+#   - Boots the VM and verifies connectivity
+#   - Outputs all steps and errors for easy troubleshooting
+#
+# Run on the host before main install if you need to validate VM provisioning or debug cloud-init/SSH issues.
+#
+# Contact: tom@sapletta.com
 set -e
 
 # Configuration variables

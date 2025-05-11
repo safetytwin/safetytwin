@@ -1,8 +1,24 @@
 #!/bin/bash
-# diagnostics.sh - Comprehensive diagnostic and comparison tool for SafetyTwin VMs
+# diagnostics.sh - Comprehensive diagnostics tool for SafetyTwin VMs
 # Author: Tom Sapletta
-# Version: 1.1
-# Usage: Run inside the VM after creation to verify configuration and compare with host
+# Last updated: 2025-05-11
+#
+# Purpose:
+#   This script performs a full system diagnostics check inside a SafetyTwin VM, verifying configuration, resources, networking, and service health.
+#
+# Usage:
+#   sudo bash diagnostics.sh
+#   (Must be run inside the VM as root)
+#
+# What it does:
+#   - Checks VM identity, user config, and cloud-init status
+#   - Verifies network, packages, and service status
+#   - Runs resource and performance tests
+#   - Saves a detailed log to /tmp/diagnostics_YYYYMMDD_HHMMSS.log
+#
+# This script is automatically copied and executed by diagnostics_download.sh from the host.
+#
+# Contact: tom@sapletta.com
 
 # Colors for output
 RED='\033[0;31m'

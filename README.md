@@ -23,15 +23,40 @@
 
 Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w czasie rzeczywistym, z częstotliwością co 10 sekund. System koncentruje się na usługach działających w tle i umożliwia natychmiastowe odtworzenie stanu systemu w wirtualnym środowisku.
 
-1. **Libvirt/QEMU/KVM** - do tworzenia wirtualnej maszyny będącej bliźniakiem
-2. **Snapshotting** - do szybkiego tworzenia i przełączania między stanami
-3. **Terraform** - do deklaratywnego opisu infrastruktury
-4. **Ansible** - do konfiguracji i zarządzania usługami
-5. **etcd/Consul** - do przechowywania stanu całego systemu
+---
 
-Rozwiązanie to pozwoli na znacznie szybsze aktualizacje niż pełne przebudowanie kontenerów Docker, a jednocześnie zapewni wierniejsze odwzorowanie rzeczywistego systemu.
+## 🛠️ SafetyTwin Provisioning & Diagnostics Workflow
 
-## Architektura systemu
+**Key Scripts:**
+- `install.sh` – Main installer, sets up the host, VM, and all services.
+- `preinstall.sh` – Minimal VM/cloud-init provisioning and troubleshooting tool.
+- `diagnostics.sh` – Runs inside the VM to check system configuration, health, and compliance.
+- `diagnostics_download.sh` – Orchestrates copying and running diagnostics.sh on the VM and downloads the resulting log to the host.
+
+### Step-by-step Workflow
+1. **Provision the VM:**
+   - Use `preinstall.sh` for minimal troubleshooting/validation, or `install.sh` for full provisioning.
+2. **Run Diagnostics:**
+   - From the host, execute `diagnostics_download.sh`. This will:
+     - Start the VM if needed
+     - Copy `diagnostics.sh` to the VM
+     - Execute diagnostics inside the VM
+     - Download the diagnostics log to your local machine automatically
+3. **Review Results:**
+   - The diagnostics log is saved in a timestamped `vm_logs_YYYYMMDD_HHMMSS` directory.
+   - To view summary/errors/warnings:
+     ```bash
+     grep -E '\[ERROR\]|\[WARNING\]|\[OK\]' ./vm_logs_YYYYMMDD_HHMMSS/diagnostics_*.log
+     ```
+   - For full details, open the log file in your editor.
+
+### Where to Find More Details
+- [INSTALL.md](INSTALL.md) – Full installation and troubleshooting guide
+- [diagnostics.md](diagnostics.md) – Detailed diagnostics script documentation
+- [preinstall.md](preinstall.md) – VM provisioning and troubleshooting
+
+---
+
 
 **Nowość (2025-05):**
 - Skrypt `repair.sh` automatycznie diagnozuje i naprawia sieć VM po instalacji, zbiera szczegółowe logi diagnostyczne do pliku `/var/lib/safetytwin/TWIN.yaml` oraz automatycznie zamyka aktywne sesje konsoli VM, aby umożliwić zbieranie danych.

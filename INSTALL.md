@@ -66,6 +66,34 @@
 
 ---
 
+## Nowy Workflow: Diagnostyka VM i logi
+
+Po utworzeniu i uruchomieniu VM możesz przeprowadzić pełną diagnostykę oraz pobrać logi na hosta jednym poleceniem:
+
+1. **Uruchom diagnostykę z hosta:**
+   ```bash
+   sudo bash diagnostics_download.sh
+   ```
+   Skrypt:
+   - Skopiuje `diagnostics.sh` do VM
+   - Uruchomi diagnostykę wewnątrz VM (jako root)
+   - Automatycznie pobierze najnowszy log diagnostyczny do katalogu `./vm_logs_YYYYMMDD_HHMMSS/`
+
+2. **Przeglądanie wyników:**
+   - Logi znajdziesz w katalogu utworzonym lokalnie podczas uruchamiania skryptu.
+   - Szybki podgląd błędów/ostrzeżeń/potwierdzeń:
+     ```bash
+     grep -E '\[ERROR\]|\[WARNING\]|\[OK\]' ./vm_logs_YYYYMMDD_HHMMSS/diagnostics_*.log
+     ```
+   - Pełny log możesz otworzyć w edytorze.
+
+Więcej szczegółów:
+- [diagnostics.md](diagnostics.md) — szczegóły działania skryptu diagnostycznego
+- [preinstall.md](preinstall.md) — dokumentacja provisioning i troubleshooting VM
+- [README.md](README.md) — ogólny workflow i architektura
+
+---
+
 ## Jak to działa
 - **safetytwin bridge** tworzy i zarządza maszyną wirtualną na bazie obrazu Ubuntu.
 - **Agent safetytwin** zbiera dane o systemie i usługach (CPU, RAM, dyski, procesy, sieć, itp.).

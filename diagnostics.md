@@ -1,50 +1,46 @@
 # diagnostics.sh - VM Diagnostic Script for Ubuntu
 
 
-## How to Use This Script
+## How to Use the Diagnostics Workflow
 
-1. **Transfer to VM**: After creating and starting your VM, copy this script to it:
+**Recommended (Automated) Method:**
+
+1. **From the host, run:**
    ```bash
-   # From host, assuming you know the VM's IP
-   scp diagnostics.sh ubuntu@VM_IP_ADDRESS:~
-   
-   # Or create it directly in the VM
-   ssh ubuntu@VM_IP_ADDRESS "cat > diagnostics.sh" < diagnostics.sh 
+   sudo bash diagnostics_download.sh
    ```
+   This will:
+   - Start the VM if needed
+   - Copy `diagnostics.sh` to the VM
+   - Run diagnostics inside the VM (as root)
+   - Download the latest diagnostics log to a timestamped local directory (`./vm_logs_YYYYMMDD_HHMMSS/`)
 
-2. **Run inside VM**: Connect to VM and run with sudo:
-   ```bash
-   ssh ubuntu@VM_IP_ADDRESS
-   chmod +x diagnostics.sh
-   sudo ./diagnostics.sh
-   ```
+2. **Review the log:**
+   - Use:
+     ```bash
+     grep -E '\[ERROR\]|\[WARNING\]|\[OK\]' ./vm_logs_YYYYMMDD_HHMMSS/diagnostics_*.log
+     ```
+   - Or open the full log in your editor.
 
+**Manual Method (for advanced troubleshooting):**
 
-## How to Use the VM Diagnostics Tool
+- Copy `diagnostics.sh` to the VM manually and run as root:
+  ```bash
+  scp diagnostics.sh ubuntu@VM_IP_ADDRESS:/tmp/
+  ssh ubuntu@VM_IP_ADDRESS
+  sudo bash /tmp/diagnostics.sh
+  ```
+- The log will be saved in `/tmp/diagnostics_YYYYMMDD_HHMMSS.log` inside the VM. Use `scp` to download if needed.
 
-This improved script adds VM detection and clearer instructions for running in the correct environment:
+---
 
-1. **Copy to VM**:
-   ```bash
-   # Save script on host first
-   scp diagnostics.sh ubuntu@VM_IP_ADDRESS:~/
-   scp diagnostics.sh ubuntu@192.168.122.98:~/
-   ssh ubuntu@192.168.122.98 "cat > diagnostics.sh" < diagnostics.sh 
-   scp ubuntu@192.168.122.98:/tmp/vm_diagnostics_20250511_102644.log diagnostics.log
-
-   ```
-
-2. **SSH to VM**:
-   ```bash
-   ssh ubuntu@VM_IP_ADDRESS
-   ```
-
-3. **Run with sudo**:
-   ```bash
-   sudo bash diagnostics.sh
-   ```
-   
-3. **Review Results**: The script will display a comprehensive report in the console and save it to `/tmp/diagnostics.log`.
+## Troubleshooting
+- If diagnostics fail to run, check:
+  - That the VM is running and accessible via SSH
+  - That you have root privileges inside the VM
+  - That `diagnostics.sh` exists and is executable
+- If logs are not downloaded, ensure `sshpass`, `scp`, and network connectivity are working from host to VM.
+- For more details, see [INSTALL.md](INSTALL.md) and [README.md](README.md).
 
 ## What This Script Checks
 

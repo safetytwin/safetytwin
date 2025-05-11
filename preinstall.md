@@ -43,16 +43,26 @@ The `safetytwin_vm.sh` script is a comprehensive tool for creating and configuri
 ### Basic Usage
 
 ```bash
-sudo ./safetytwin_vm.sh
+sudo ./preinstall.sh
 ```
 
-This creates a VM with the default name "safetytwin-vm".
+This creates a VM with the default name "safetytwin-vm" and verifies cloud-init, SSH, and connectivity.
 
 ### Custom VM Name
 
 ```bash
-sudo ./safetytwin_vm.sh custom-vm-name
+sudo ./preinstall.sh custom-vm-name
 ```
+
+### Next Steps: Diagnostics & Troubleshooting
+
+- After provisioning, run full diagnostics and retrieve logs automatically using:
+  ```bash
+  sudo bash diagnostics_download.sh
+  ```
+  This will copy and execute diagnostics inside the VM, and download the latest log to your local machine for review.
+
+- See [diagnostics.md](diagnostics.md) for details on the diagnostic script and [INSTALL.md](INSTALL.md) for the full workflow.
 
 ### Listing Available VMs
 

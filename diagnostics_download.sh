@@ -1,7 +1,24 @@
 #!/bin/bash
-# vm_diagnostics_runner.sh - Start VM, run diagnostics, and download log files
+# diagnostics_download.sh - Run diagnostics on SafetyTwin VM and download logs
 # Author: Tom Sapletta
-# Usage: bash vm_diagnostics_runner.sh [VM_NAME]
+# Last updated: 2025-05-11
+#
+# Purpose:
+#   This script automates the process of copying diagnostics.sh to a VM, executing it, and downloading the resulting log file to the host for review.
+#
+# Usage:
+#   sudo bash diagnostics_download.sh [VM_NAME]
+#
+# What it does:
+#   - Starts the VM if needed and finds its IP address
+#   - Copies diagnostics.sh to the VM
+#   - Executes diagnostics.sh remotely (as root)
+#   - Downloads the latest diagnostics log to a local directory
+#   - Informs the user of log location and how to view condensed results
+#
+# This script should be run on the host/controller. It requires sshpass, scp, and virsh.
+#
+# Contact: tom@sapletta.com
 
 # Colors
 GREEN='\033[0;32m'
@@ -15,7 +32,7 @@ VM_NAME="${1:-safetytwin-vm}"
 VM_USER="ubuntu"
 VM_PASS="ubuntu"
 LOCAL_LOG_DIR="./vm_logs_$(date +%Y%m%d_%H%M%S)"
-REMOTE_DIAGNOSTIC_SCRIPT="/tmp/vm_diagnostics.sh"
+REMOTE_DIAGNOSTIC_SCRIPT="/tmp/diagnostics.sh"
 REMOTE_LOG_PATTERN="/tmp/*.log"
 TIMEOUT_SECONDS=300  # 5 minutes max wait time
 
@@ -112,232 +129,28 @@ while [ "$ssh_ready" = false ]; do
     fi
 done
 
-# Create VM diagnostics script
-log "Creating VM diagnostics script..."
-cat > /tmp/vm_diagnostics.sh << 'EOF'
-#!/bin/bash
-# VM Diagnostics Script - Verify VM configuration and create comprehensive logs
-# Run with: sudo bash vm_diagnostics.sh
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Functions
-log() { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-separator() { echo "----------------------------------------"; }
-
-# Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-    echo -e "${RED}This script must be run as root.${NC}"
-    echo "Please re-run as: sudo $(basename $0)"
+# Ensure diagnostics.sh exists locally and copy it to the VM
+if [ ! -f "./diagnostics.sh" ]; then
+    log_error "Local diagnostics script ./diagnostics.sh not found! Please provide it."
     exit 1
 fi
 
-# Save output to file
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-REPORT_FILE="/tmp/vm_diagnostics_report_$TIMESTAMP.log"
-SYSTEM_LOG="/tmp/vm_system_info_$TIMESTAMP.log"
-NETWORK_LOG="/tmp/vm_network_$TIMESTAMP.log"
-DISK_LOG="/tmp/vm_disk_$TIMESTAMP.log"
-SERVICE_LOG="/tmp/vm_services_$TIMESTAMP.log"
-PERFORMANCE_LOG="/tmp/vm_performance_$TIMESTAMP.log"
-SYSLOG_EXTRACT="/tmp/vm_syslog_extract_$TIMESTAMP.log"
-DMESG_LOG="/tmp/vm_dmesg_$TIMESTAMP.log"
+# Copy diagnostics.sh to the VM
+sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no "./diagnostics.sh" "$VM_USER@$VM_IP:$REMOTE_DIAGNOSTIC_SCRIPT"
 
-exec > >(tee $REPORT_FILE) 2>&1
-  free -h
-  echo -e "\nDisk Space:"
-  df -h
-  echo -e "\nMount Points:"
-  mount | sort
-  echo -e "\nFstab Configuration:"
-  cat /etc/fstab
-  echo -e "\nKernel Parameters:"
-  sysctl -a 2>/dev/null | grep -E 'vm\.dirty|vm\.swappiness|fs\.'
-  echo -e "\nRunning Processes (Top 10 by CPU):"
-  ps aux --sort=-%cpu | head -11
-  echo -e "\nRunning Processes (Top 10 by Memory):"
-  ps aux --sort=-%mem | head -11
-  echo -e "\nUser List:"
-  cat /etc/passwd | grep -E '/home|/root' | cut -d: -f1
-  echo -e "\nSudo Access:"
-  grep -r "sudo" /etc/group /etc/sudoers.d 2>/dev/null
-) | tee "$SYSTEM_LOG"
-echo "Full system information saved to $SYSTEM_LOG"
-separator
+# Execute diagnostics.sh remotely
+sshpass -p "$VM_PASS" ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_IP" "sudo bash $REMOTE_DIAGNOSTIC_SCRIPT"
 
-# Check filesystem
-echo -e "${BLUE}Filesystem Status:${NC}"
-(
-  echo "=== DISK AND FILESYSTEM INFORMATION ==="
-  echo "Date: $(date)"
-  echo -e "\nMount Information:"
-  mount | grep -v "tmpfs\|proc\|sys\|cgroup\|securityfs"
-  echo -e "\nRoot Filesystem:"
-  mount | grep " / " | grep -v "rootfs"
-  if mount | grep " / " | grep -q "ro"; then
-    echo "[ERROR] Root filesystem is mounted READ-ONLY!"
-  else
-    echo "[OK] Root filesystem is mounted read-write."
-  fi
-  echo -e "\nFilesystem Types:"
-  df -T
-  echo -e "\nDisk Usage:"
-  df -h
-  echo -e "\nBlock Devices:"
-  lsblk -f
-  echo -e "\nDisk by UUID:"
-  ls -la /dev/disk/by-uuid/
-  echo -e "\nDisk by Path:"
-  ls -la /dev/disk/by-path/ 2>/dev/null || echo "No disk by path information"
-  echo -e "\nFstab Configuration:"
-  cat /etc/fstab
-  echo -e "\nLast 10 Lines from dmesg related to disks:"
-  dmesg | grep -iE 'sd|disk|fs|ext4|vda|error|warn' | tail -10
-  echo -e "\nBoot Command Line:"
-  cat /proc/cmdline
-) | tee "$DISK_LOG"
-
-# Test write access
-echo -e "${BLUE}Write Access Test:${NC}"
-TEST_DIR="/tmp/write-test-$(date +%s)"
-mkdir -p "$TEST_DIR"
-for i in {1..5}; do
-  TEST_FILE="$TEST_DIR/test-$i.txt"
-  if echo "Test data $i" > "$TEST_FILE" 2>/dev/null; then
-    log_success "Successfully wrote to $TEST_FILE"
-  else
-    log_error "Failed to write to $TEST_FILE"
-  fi
-done
-
-# Test file creation in various directories
-for dir in "/tmp" "/home/$SUDO_USER" "/var/tmp" "/opt" "/usr/local/bin"; do
-  if [ -d "$dir" ]; then
-    TEST_FILE="$dir/write-test-$(date +%s).txt"
-    if touch "$TEST_FILE" 2>/dev/null; then
-      echo "Test data for $dir" > "$TEST_FILE"
-      log_success "Successfully created file in $dir"
-      rm "$TEST_FILE"
-    else
-      log_error "Failed to create file in $dir"
-    fi
-  else
-    log_warning "Directory $dir does not exist"
-  fi
-done
-
-# Check for write access test file from cloud-init
-if [ -f /opt/testdir/test-write-access ]; then
-  log_success "Found write access test file from VM initialization"
-  cat /opt/testdir/test-write-access
+# Find the latest diagnostics log file on the VM
+LATEST_LOG=$(sshpass -p "$VM_PASS" ssh -o StrictHostKeyChecking=no "$VM_USER@$VM_IP" "ls -1t /tmp/diagnostics_*.log | head -n1")
+if [ -n "$LATEST_LOG" ]; then
+    # Download it to your local log directory
+    sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no "$VM_USER@$VM_IP:$LATEST_LOG" "$LOCAL_LOG_DIR/"
+    log_success "Downloaded diagnostics log to $LOCAL_LOG_DIR/"
+    echo "[INFO] To view condensed results: grep -E '\[ERROR\]|\[WARNING\]|\[OK\]' $LOCAL_LOG_DIR/$(basename $LATEST_LOG)"
 else
-  log_warning "Could not find write access test file from VM initialization"
+    log_warning "No diagnostics log found on the VM."
 fi
-separator
-
-# Check network
-echo -e "${BLUE}Network:${NC}"
-(
-  echo "=== NETWORK INFORMATION ==="
-  echo "Date: $(date)"
-  echo -e "\nIP Addresses:"
-  hostname -I
-  echo -e "\nHostname Resolution:"
-  hostname
-  hostname -f
-  cat /etc/hostname
-  cat /etc/hosts
-  echo -e "\nDNS Configuration:"
-  cat /etc/resolv.conf
-  echo -e "\nNetwork Interfaces:"
-  ip -br a
-  echo -e "\nDetailed Interface Information:"
-  ip a
-  echo -e "\nRouting Table:"
-  ip route
-  echo -e "\nNetwork Statistics:"
-  netstat -tuln
-  echo -e "\nConnections:"
-  netstat -tn
-  echo -e "\nActive Internet Connections:"
-  netstat -tuanp
-  echo -e "\nArp Table:"
-  arp -a || echo "arp command not available"
-  echo -e "\nDHCP Client Configuration:"
-  ls -la /var/lib/dhcp/
-  [ -f /var/lib/dhcp/dhclient.leases ] && cat /var/lib/dhcp/dhclient.leases
-  echo -e "\nNetwork Configuration Files:"
-  ls -la /etc/netplan/ 2>/dev/null || echo "No netplan directory"
-  find /etc/netplan -type f -exec cat {} \; 2>/dev/null
-  echo -e "\nNetworkd Status:"
-  systemctl status systemd-networkd || echo "systemd-networkd not running"
-  echo -e "\nFirewall Status:"
-  ufw status 2>/dev/null || echo "ufw not installed"
-  iptables -L 2>/dev/null || echo "iptables command not available"
-) | tee "$NETWORK_LOG"
-echo "Full network information saved to $NETWORK_LOG"
-separator
-
-# Check services
-echo -e "${BLUE}Services:${NC}"
-(
-  echo "=== SERVICE INFORMATION ==="
-  echo "Date: $(date)"
-  echo -e "\nSSH Status:"
-  systemctl status ssh || echo "SSH service not found!"
-  echo -e "\nSSH Configuration:"
-  grep -v "^#" /etc/ssh/sshd_config | grep -v "^$"
-  echo -e "\nQEMU Guest Agent Status:"
-  systemctl status qemu-guest-agent || echo "QEMU Guest Agent not found!"
-  echo -e "\nCritical Services Status:"
-  systemctl status systemd-networkd systemd-resolved systemd-journald systemd-logind systemd-timesyncd
-  echo -e "\nFailed Services:"
-  systemctl --failed
-  echo -e "\nAll Active Services:"
-  systemctl list-units --type=service --state=active
-  echo -e "\nService Boot Times:"
-  systemd-analyze blame | head -20
-  echo -e "\nTimers:"
-  systemctl list-timers
-  echo -e "\nCloud-Init Status:"
-  cloud-init status
-  echo -e "\nCloud-Init Result:"
-  [ -f /run/cloud-init/result.json ] && cat /run/cloud-init/result.json
-) | tee "$SERVICE_LOG"
-echo "Full service information saved to $SERVICE_LOG"
-separator
-
-# Performance test
-echo -e "${BLUE}Performance Test:${NC}"
-(
-  echo "=== PERFORMANCE INFORMATION ==="
-  echo "Date: $(date)"
-  echo -e "\nCPU Info:"
-  cat /proc/cpuinfo
-  echo -e "\nMemory Info:"
-  cat /proc/meminfo
-  echo -e "\nDisk Write Speed:"
-  dd if=/dev/zero of=/tmp/testfile bs=1M count=100 conv=fdatasync 2>&1
-  rm -f /tmp/testfile
-  echo -e "\nDisk Read Speed:"
-  dd if=/tmp/testfile of=/dev/null bs=1M count=100 2>&1
-  echo -e "\nFile System Caching:"
-  free -h
-  echo 3 > /proc/sys/vm/drop_caches
-  free -h
-  echo -e "\nLoad Average:"
-  cat /proc/loadavg
-  echo -e "\nUptime:"
-  cat /proc/uptime
-  uptime
   echo -e "\nDisk I/O Stats:"
   iostat 2>/dev/null || echo "iostat not available"
   echo -e "\nVMStat:"
@@ -386,7 +199,7 @@ EOF
 
 # Copy the diagnostics script to the VM
 log "Transferring diagnostics script to VM..."
-sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 /tmp/vm_diagnostics.sh "$VM_USER@$VM_IP:$REMOTE_DIAGNOSTIC_SCRIPT" || {
+sshpass -p "$VM_PASS" scp -o StrictHostKeyChecking=no -o ConnectTimeout=10 /tmp/diagnostics.sh "$VM_USER@$VM_IP:$REMOTE_DIAGNOSTIC_SCRIPT" || {
     log_error "Failed to copy diagnostics script to VM."
     exit 1
 }
