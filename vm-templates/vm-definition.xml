@@ -1,6 +1,6 @@
 
 <domain type='kvm'>
-  <name>digital-twin-vm</name>
+  <name>safetytwin-vm</name>
   <memory unit='KiB'>4194304</memory>
   <currentMemory unit='KiB'>4194304</currentMemory>
   <vcpu placement='static'>2</vcpu>
@@ -30,13 +30,13 @@
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
-      <source file='/var/lib/digital-twin/images/vm.qcow2'/>
+      <source file='/var/lib/safetytwin/images/vm.qcow2'/>
       <target dev='vda' bus='virtio'/>
       <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
     </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file='/var/lib/digital-twin/cloud-init/seed.iso'/>
+      <source file='/var/lib/safetytwin/cloud-init/seed.iso'/>
       <target dev='sda' bus='sata'/>
       <readonly/>
       <address type='drive' controller='0' bus='0' target='0' unit='0'/>

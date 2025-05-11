@@ -31,47 +31,47 @@ Most między systemem monitorującym a wirtualną maszyną cyfrowego bliźniaka.
 
 ```bash
 # Utwórz katalogi
-sudo mkdir -p /opt/digital-twin
-sudo mkdir -p /etc/digital-twin/templates
-sudo mkdir -p /var/lib/digital-twin/states
-sudo mkdir -p /var/log/digital-twin
+sudo mkdir -p /opt/safetytwin
+sudo mkdir -p /etc/safetytwin/templates
+sudo mkdir -p /var/lib/safetytwin/states
+sudo mkdir -p /var/log/safetytwin
 
 # Skopiuj pliki
-sudo cp -r vm_bridge.py /opt/digital-twin/
-sudo cp -r utils/ /opt/digital-twin/
-sudo cp -r templates/ /etc/digital-twin/
+sudo cp -r vm_bridge.py /opt/safetytwin/
+sudo cp -r utils/ /opt/safetytwin/
+sudo cp -r templates/ /etc/safetytwin/
 
 # Utwórz konfigurację
-sudo cat > /etc/digital-twin/vm-bridge.yaml << EOF
-vm_name: digital-twin-vm
+sudo cat > /etc/safetytwin/vm-bridge.yaml << EOF
+vm_name: safetytwin-vm
 libvirt_uri: qemu:///system
 vm_user: root
-vm_password: digital-twin-password
-vm_key_path: /etc/digital-twin/ssh/id_rsa
-ansible_inventory: /etc/digital-twin/inventory.yml
-ansible_playbook: /opt/digital-twin/apply_services.yml
-state_dir: /var/lib/digital-twin/states
-templates_dir: /etc/digital-twin/templates
+vm_password: safetytwin-password
+vm_key_path: /etc/safetytwin/ssh/id_rsa
+ansible_inventory: /etc/safetytwin/inventory.yml
+ansible_playbook: /opt/safetytwin/apply_services.yml
+state_dir: /var/lib/safetytwin/states
+templates_dir: /etc/safetytwin/templates
 max_snapshots: 10
 EOF
 
 # Utwórz usługę systemd
-sudo cat > /etc/systemd/system/digital-twin-bridge.service << EOF
+sudo cat > /etc/systemd/system/safetytwin-bridge.service << EOF
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service
 
 [Service]
 Type=simple
-ExecStart=/opt/digital-twin/vm_bridge.py --config /etc/digital-twin/vm-bridge.yaml --port 5678
+ExecStart=/opt/safetytwin/vm_bridge.py --config /etc/safetytwin/vm-bridge.yaml --port 5678
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-bridge
+SyslogIdentifier=safetytwin-bridge
 User=root
 Group=root
-WorkingDirectory=/opt/digital-twin
+WorkingDirectory=/opt/safetytwin
 
 [Install]
 WantedBy=multi-user.target
@@ -79,7 +79,7 @@ EOF
 
 # Załaduj i uruchom usługę
 sudo systemctl daemon-reload
-sudo systemctl enable --now digital-twin-bridge.service
+sudo systemctl enable --now safetytwin-bridge.service
 ```
 
 ### Z Makefile
@@ -92,18 +92,18 @@ sudo make install
 
 ## Konfiguracja
 
-VM Bridge jest konfigurowany przez plik YAML. Domyślna lokalizacja to `/etc/digital-twin/vm-bridge.yaml`.
+VM Bridge jest konfigurowany przez plik YAML. Domyślna lokalizacja to `/etc/safetytwin/vm-bridge.yaml`.
 
 ```yaml
-vm_name: digital-twin-vm          # Nazwa maszyny wirtualnej
+vm_name: safetytwin-vm          # Nazwa maszyny wirtualnej
 libvirt_uri: qemu:///system       # URI do libvirt
 vm_user: root                     # Użytkownik VM
-vm_password: digital-twin-password # Hasło (opcjonalne, lepiej użyć klucza)
-vm_key_path: /etc/digital-twin/ssh/id_rsa # Ścieżka do klucza SSH
-ansible_inventory: /etc/digital-twin/inventory.yml # Plik inwentarza Ansible
-ansible_playbook: /opt/digital-twin/apply_services.yml # Playbook Ansible
-state_dir: /var/lib/digital-twin/states # Katalog na dane stanu
-templates_dir: /etc/digital-twin/templates # Katalog szablonów
+vm_password: safetytwin-password # Hasło (opcjonalne, lepiej użyć klucza)
+vm_key_path: /etc/safetytwin/ssh/id_rsa # Ścieżka do klucza SSH
+ansible_inventory: /etc/safetytwin/inventory.yml # Plik inwentarza Ansible
+ansible_playbook: /opt/safetytwin/apply_services.yml # Playbook Ansible
+state_dir: /var/lib/safetytwin/states # Katalog na dane stanu
+templates_dir: /etc/safetytwin/templates # Katalog szablonów
 max_snapshots: 10                 # Maksymalna liczba przechowywanych snapshotów
 ```
 
@@ -111,23 +111,23 @@ max_snapshots: 10                 # Maksymalna liczba przechowywanych snapshotó
 
 ```bash
 # Uruchom bezpośrednio
-sudo /opt/digital-twin/vm_bridge.py --config /etc/digital-twin/vm-bridge.yaml --port 5678
+sudo /opt/safetytwin/vm_bridge.py --config /etc/safetytwin/vm-bridge.yaml --port 5678
 
 # Lub przez systemd
-sudo systemctl start digital-twin-bridge
+sudo systemctl start safetytwin-bridge
 ```
 
 ## Monitorowanie
 
 ```bash
 # Sprawdź status usługi
-sudo systemctl status digital-twin-bridge
+sudo systemctl status safetytwin-bridge
 
 # Sprawdź logi
-sudo journalctl -fu digital-twin-bridge
+sudo journalctl -fu safetytwin-bridge
 
 # Sprawdź bezpośrednio plik dziennika
-tail -f /var/log/digital-twin/vm-bridge.log
+tail -f /var/log/safetytwin/vm-bridge.log
 ```
 
 ## API REST
@@ -235,7 +235,7 @@ VM Bridge składa się z następujących głównych modułów:
 
 ## Szablony
 
-VM Bridge używa szablonów Jinja2 do generowania konfiguracji dla VM. Szablony znajdują się w katalogu `/etc/digital-twin/templates/`.
+VM Bridge używa szablonów Jinja2 do generowania konfiguracji dla VM. Szablony znajdują się w katalogu `/etc/safetytwin/templates/`.
 
 ### process_launcher.sh.j2
 
@@ -324,21 +324,21 @@ success = vm_manager.revert_to_snapshot(snapshot_name)
 
 ### VM Bridge nie uruchamia się
 
-1. Sprawdź logi: `sudo journalctl -fu digital-twin-bridge`
+1. Sprawdź logi: `sudo journalctl -fu safetytwin-bridge`
 2. Upewnij się, że libvirt działa: `sudo systemctl status libvirtd`
 3. Sprawdź, czy maszyna wirtualna istnieje: `sudo virsh list --all`
 
 ### Problemy z połączeniem z VM
 
-1. Sprawdź status VM: `sudo virsh domstate digital-twin-vm`
-2. Sprawdź adres IP VM: `sudo virsh domifaddr digital-twin-vm`
-3. Sprawdź, czy SSH działa: `ssh -i /etc/digital-twin/ssh/id_rsa root@<IP-VM>`
+1. Sprawdź status VM: `sudo virsh domstate safetytwin-vm`
+2. Sprawdź adres IP VM: `sudo virsh domifaddr safetytwin-vm`
+3. Sprawdź, czy SSH działa: `ssh -i /etc/safetytwin/ssh/id_rsa root@<IP-VM>`
 
 ### Problemy z aplikowaniem konfiguracji
 
-1. Sprawdź logi Ansible: `/var/log/digital-twin/ansible.log`
-2. Uruchom Ansible ręcznie: `ansible-playbook -i /etc/digital-twin/inventory.yml /opt/digital-twin/apply_services.yml -v`
-3. Sprawdź, czy usługi na VM działają: `ssh -i /etc/digital-twin/ssh/id_rsa root@<IP-VM> "systemctl status"`
+1. Sprawdź logi Ansible: `/var/log/safetytwin/ansible.log`
+2. Uruchom Ansible ręcznie: `ansible-playbook -i /etc/safetytwin/inventory.yml /opt/safetytwin/apply_services.yml -v`
+3. Sprawdź, czy usługi na VM działają: `ssh -i /etc/safetytwin/ssh/id_rsa root@<IP-VM> "systemctl status"`
 
 ## Licencja
 

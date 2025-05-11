@@ -19,7 +19,7 @@
 - [✗] VM uruchomiona, ale nie udało się uzyskać adresu IP oraz połączyć przez SSH (10 prób zakończonych niepowodzeniem).
 - [!] Sugerowana akcja: sprawdź konsolę VM:
   ```
-  virsh console digital-twin-vm
+  virsh console safetytwin-vm
   ```
   oraz sieć/nat/dhcp w libvirt.
 
@@ -48,7 +48,7 @@ Instalacja przebiegła poprawnie do etapu uruchomienia VM. Problemem jest brak u
 ### Rekomendacje:
 - Sprawdź logi libvirt i cloud-init VM.
 - Sprawdź ustawienia sieci w libvirt (NAT, DHCP, mostek).
-- Użyj `virsh console digital-twin-vm` do ręcznej diagnostyki maszyny.
+- Użyj `virsh console safetytwin-vm` do ręcznej diagnostyki maszyny.
 - Upewnij się, że system hosta pozwala na forwarding i działa dnsmasq/dhcp.
 
 ---
@@ -58,5 +58,5 @@ Instalacja przebiegła poprawnie do etapu uruchomienia VM. Problemem jest brak u
 - `virsh list --all`
 - `journalctl -u safetytwin-agent.service`
 - `journalctl -u safetytwin-bridge.service`
-- `sudo virsh console digital-twin-vm`
+- `sudo virsh console safetytwin-vm`
 - Sprawdź logi w `/var/log/safetytwin/`

@@ -297,7 +297,7 @@ def tail_log(path, keyword=None, lines=40):
 
 def list_snapshots():
     try:
-        out = subprocess.check_output(["virsh", "snapshot-list", "digital-twin-vm", "--tree"], encoding="utf-8", errors="ignore")
+        out = subprocess.check_output(["virsh", "snapshot-list", "safetytwin-vm", "--tree"], encoding="utf-8", errors="ignore")
         snaps = []
         for line in out.splitlines():
             if line.strip() and not line.startswith("Name") and not line.startswith("-"):
@@ -312,17 +312,17 @@ def list_snapshots():
 @app.post("/snapshots/create")
 def create_snapshot():
     snap_name = f"manual-snap-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-    subprocess.run(["virsh", "snapshot-create-as", "digital-twin-vm", snap_name])
+    subprocess.run(["virsh", "snapshot-create-as", "safetytwin-vm", snap_name])
     return RedirectResponse("/dashboard", status_code=303)
 
 @app.post("/snapshots/delete/{snap_name}")
 def delete_snapshot(snap_name: str):
-    subprocess.run(["virsh", "snapshot-delete", "digital-twin-vm", snap_name])
+    subprocess.run(["virsh", "snapshot-delete", "safetytwin-vm", snap_name])
     return RedirectResponse("/dashboard", status_code=303)
 
 @app.post("/snapshots/revert/{snap_name}")
 def revert_snapshot(snap_name: str):
-    subprocess.run(["virsh", "snapshot-revert", "digital-twin-vm", snap_name])
+    subprocess.run(["virsh", "snapshot-revert", "safetytwin-vm", snap_name])
     return RedirectResponse("/dashboard", status_code=303)
 
 @app.post("/sync")
@@ -336,14 +336,14 @@ def force_sync():
             f.write('services:\n')
             for svc in sorted(new_services):
                 f.write(f'  - {svc}\n')
-        subprocess.run(['ansible-playbook', '/opt/digital-twin/apply_services.yml'])
+        subprocess.run(['ansible-playbook', '/opt/safetytwin/apply_services.yml'])
         snap_name = f"manual-sync-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        subprocess.run(['virsh', 'snapshot-create-as', 'digital-twin-vm', snap_name])
+        subprocess.run(['virsh', 'snapshot-create-as', 'safetytwin-vm', snap_name])
     return RedirectResponse("/dashboard", status_code=303)
 
 @app.post("/rollback")
 def rollback(snapshot_name: str = Form(...)):
-    subprocess.run(["virsh", "snapshot-revert", "digital-twin-vm", snapshot_name])
+    subprocess.run(["virsh", "snapshot-revert", "safetytwin-vm", snapshot_name])
     return RedirectResponse("/dashboard", status_code=303)
 
 @app.post("/api/state")
@@ -366,8 +366,8 @@ async def receive_state(request: Request):
             for svc in sorted(new_services):
                 f.write(f'  - {svc}\n')
         # Call ansible-playbook
-        subprocess.run(['ansible-playbook', '/opt/digital-twin/apply_services.yml'])
+        subprocess.run(['ansible-playbook', '/opt/safetytwin/apply_services.yml'])
         # Create VM snapshot (example for KVM/libvirt)
         snap_name = f"auto-snap-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        subprocess.run(['virsh', 'snapshot-create-as', 'digital-twin-vm', snap_name])
+        subprocess.run(['virsh', 'snapshot-create-as', 'safetytwin-vm', snap_name])
     return {"status": "ok"}

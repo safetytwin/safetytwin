@@ -22,7 +22,7 @@ Lekki, wydajny agent napisany w Go do zbierania danych o infrastrukturze systemu
 
 ```bash
 cd agent
-go build -o bin/digital-twin-agent main.go
+go build -o bin/safetytwin-agent main.go
 ```
 
 ## Instalacja
@@ -31,21 +31,21 @@ go build -o bin/digital-twin-agent main.go
 
 ```bash
 # Utwórz katalogi
-sudo mkdir -p /opt/digital-twin
-sudo mkdir -p /etc/digital-twin
-sudo mkdir -p /var/lib/digital-twin/agent-states
-sudo mkdir -p /var/log/digital-twin
+sudo mkdir -p /opt/safetytwin
+sudo mkdir -p /etc/safetytwin
+sudo mkdir -p /var/lib/safetytwin/agent-states
+sudo mkdir -p /var/log/safetytwin
 
 # Skopiuj plik binarny
-sudo cp bin/digital-twin-agent /opt/digital-twin/
+sudo cp bin/safetytwin-agent /opt/safetytwin/
 
 # Utwórz konfigurację
-sudo cat > /etc/digital-twin/agent-config.json << EOF
+sudo cat > /etc/safetytwin/agent-config.json << EOF
 {
   "interval": 10,
   "bridge_url": "http://localhost:5678/api/v1/update_state",
-  "log_file": "/var/log/digital-twin/agent.log",
-  "state_dir": "/var/lib/digital-twin/agent-states",
+  "log_file": "/var/log/safetytwin/agent.log",
+  "state_dir": "/var/lib/safetytwin/agent-states",
   "include_processes": true,
   "include_network": true,
   "verbose": false
@@ -53,22 +53,22 @@ sudo cat > /etc/digital-twin/agent-config.json << EOF
 EOF
 
 # Utwórz usługę systemd
-sudo cat > /etc/systemd/system/digital-twin-agent.service << EOF
+sudo cat > /etc/systemd/system/safetytwin-agent.service << EOF
 [Unit]
 Description=Digital Twin Agent
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/digital-twin/digital-twin-agent -config /etc/digital-twin/agent-config.json
+ExecStart=/opt/safetytwin/safetytwin-agent -config /etc/safetytwin/agent-config.json
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-agent
+SyslogIdentifier=safetytwin-agent
 User=root
 Group=root
-WorkingDirectory=/opt/digital-twin
+WorkingDirectory=/opt/safetytwin
 
 [Install]
 WantedBy=multi-user.target
@@ -76,7 +76,7 @@ EOF
 
 # Załaduj i uruchom usługę
 sudo systemctl daemon-reload
-sudo systemctl enable --now digital-twin-agent.service
+sudo systemctl enable --now safetytwin-agent.service
 ```
 
 ### Z Makefile
@@ -89,14 +89,14 @@ sudo make install
 
 ## Konfiguracja
 
-Agent jest konfigurowany przez plik JSON. Domyślna lokalizacja to `/etc/digital-twin/agent-config.json`.
+Agent jest konfigurowany przez plik JSON. Domyślna lokalizacja to `/etc/safetytwin/agent-config.json`.
 
 ```json
 {
   "interval": 10,            // Interwał zbierania danych w sekundach
   "bridge_url": "http://localhost:5678/api/v1/update_state",  // URL do VM Bridge
-  "log_file": "/var/log/digital-twin/agent.log",  // Plik dziennika
-  "state_dir": "/var/lib/digital-twin/agent-states",  // Katalog na dane stanu
+  "log_file": "/var/log/safetytwin/agent.log",  // Plik dziennika
+  "state_dir": "/var/lib/safetytwin/agent-states",  // Katalog na dane stanu
   "include_processes": true,  // Czy zbierać dane o procesach
   "include_network": true,    // Czy zbierać dane o sieci
   "verbose": false            // Tryb szczegółowego logowania
@@ -107,23 +107,23 @@ Agent jest konfigurowany przez plik JSON. Domyślna lokalizacja to `/etc/digital
 
 ```bash
 # Uruchom bezpośrednio
-sudo /opt/digital-twin/digital-twin-agent -config /etc/digital-twin/agent-config.json
+sudo /opt/safetytwin/safetytwin-agent -config /etc/safetytwin/agent-config.json
 
 # Lub przez systemd
-sudo systemctl start digital-twin-agent
+sudo systemctl start safetytwin-agent
 ```
 
 ## Monitorowanie
 
 ```bash
 # Sprawdź status usługi
-sudo systemctl status digital-twin-agent
+sudo systemctl status safetytwin-agent
 
 # Sprawdź logi
-sudo journalctl -fu digital-twin-agent
+sudo journalctl -fu safetytwin-agent
 
 # Sprawdź bezpośrednio plik dziennika
-tail -f /var/log/digital-twin/agent.log
+tail -f /var/log/safetytwin/agent.log
 ```
 
 ## Architektura
@@ -202,14 +202,14 @@ Agent wysyła dane w formacie JSON, zgodnie z modelami zdefiniowanymi w **models
 
 ### Agent nie uruchamia się
 
-1. Sprawdź logi: `sudo journalctl -fu digital-twin-agent`
-2. Upewnij się, że katalogi istnieją: `/opt/digital-twin`, `/etc/digital-twin`, `/var/lib/digital-twin/agent-states`, `/var/log/digital-twin`
-3. Sprawdź uprawnienia: `ls -la /opt/digital-twin/digital-twin-agent`
+1. Sprawdź logi: `sudo journalctl -fu safetytwin-agent`
+2. Upewnij się, że katalogi istnieją: `/opt/safetytwin`, `/etc/safetytwin`, `/var/lib/safetytwin/agent-states`, `/var/log/safetytwin`
+3. Sprawdź uprawnienia: `ls -la /opt/safetytwin/safetytwin-agent`
 
 ### Agent nie wysyła danych
 
 1. Sprawdź, czy VM Bridge działa: `curl http://localhost:5678/api/v1/status`
-2. Sprawdź konfigurację URL Bridge: `/etc/digital-twin/agent-config.json`
+2. Sprawdź konfigurację URL Bridge: `/etc/safetytwin/agent-config.json`
 3. Sprawdź połączenie sieciowe: `ping localhost`
 
 ### Wysokie zużycie zasobów

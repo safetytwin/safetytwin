@@ -49,15 +49,15 @@ System składa się z następujących głównych komponentów:
 
 ```bash
 # Klonowanie repozytorium
-git clone https://github.com/safetytwin/digital-twin.git
-cd digital-twin
+git clone https://github.com/safetytwin/safetytwin.git
+cd safetytwin
 
 # Instalacja systemu
 sudo make install
 
 # Uruchomienie usług
-sudo systemctl enable --now digital-twin-agent.service
-sudo systemctl enable --now digital-twin-bridge.service
+sudo systemctl enable --now safetytwin-agent.service
+sudo systemctl enable --now safetytwin-bridge.service
 ```
 
 ### Instalacja z Dostosowaniem
@@ -77,16 +77,16 @@ Szczegółowe instrukcje znajdują się w pliku [INSTALLATION.md](docs/INSTALLAT
 
 ```bash
 # Sprawdź stan agenta
-sudo systemctl status digital-twin-agent
+sudo systemctl status safetytwin-agent
 
 # Sprawdź stan VM Bridge
-sudo systemctl status digital-twin-bridge
+sudo systemctl status safetytwin-bridge
 
 # Sprawdź logi agenta
-sudo journalctl -fu digital-twin-agent
+sudo journalctl -fu safetytwin-agent
 
 # Sprawdź logi VM Bridge
-sudo journalctl -fu digital-twin-bridge
+sudo journalctl -fu safetytwin-bridge
 ```
 
 ### Zarządzanie przez API REST
@@ -110,8 +110,8 @@ System może być używany do monitorowania i replikowania środowiska uruchomie
 
 ```bash
 # Konfiguracja specjalna dla LLM
-cp configs/examples/llm-config.json /etc/digital-twin/agent-config.json
-systemctl restart digital-twin-agent
+cp configs/examples/llm-config.json /etc/safetytwin/agent-config.json
+systemctl restart safetytwin-agent
 ```
 
 ### Analiza Awarii
@@ -121,7 +121,7 @@ systemctl restart digital-twin-agent
 curl -X POST http://localhost:5678/api/v1/snapshots/state_before_crash
 
 # Podłącz się do konsoli VM
-virsh console digital-twin-vm
+virsh console safetytwin-vm
 ```
 
 Więcej przykładów można znaleźć w katalogu [examples](examples/).
@@ -163,4 +163,4 @@ Ten projekt jest udostępniany na licencji MIT. Zobacz plik [LICENSE](LICENSE).
 ## Kontakt
 
 W razie pytań lub problemów, prosimy o kontakt przez:
-- GitHub Issues: [https://github.com/safetytwin/digital-twin/issues](https://github.com/safetytwin/digital-twin/issues)
+- GitHub Issues: [https://github.com/safetytwin/safetytwin/issues](https://github.com/safetytwin/safetytwin/issues)

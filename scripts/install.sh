@@ -13,18 +13,18 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Katalogi instalacyjne
-INSTALL_DIR="/opt/digital-twin"
-CONFIG_DIR="/etc/digital-twin"
-STATE_DIR="/var/lib/digital-twin"
-LOG_DIR="/var/log/digital-twin"
+INSTALL_DIR="/opt/safetytwin"
+CONFIG_DIR="/etc/safetytwin"
+STATE_DIR="/var/lib/safetytwin"
+LOG_DIR="/var/log/safetytwin"
 
 # Ustawienia domyślne
-VM_NAME="digital-twin-vm"
+VM_NAME="safetytwin-vm"
 VM_MEMORY=4096  # MB
 VM_VCPUS=2
 BRIDGE_PORT=5678
 AGENT_INTERVAL=10
-REPO_URL="https://github.com/digital-twin-system/digital-twin.git"
+REPO_URL="https://github.com/safetytwin/safetytwin.git"
 
 # Funkcje pomocnicze
 log() {
@@ -87,15 +87,15 @@ while [[ $# -gt 0 ]]; do
       echo "Użycie: $0 [OPCJE]"
       echo ""
       echo "Dostępne opcje:"
-      echo "  --vm-name NAZWA          Nazwa maszyny wirtualnej (domyślnie: digital-twin-vm)"
+      echo "  --vm-name NAZWA          Nazwa maszyny wirtualnej (domyślnie: safetytwin-vm)"
       echo "  --vm-memory PAMIĘĆ       Ilość pamięci dla VM w MB (domyślnie: 4096)"
       echo "  --vm-vcpus VCPUS         Liczba vCPU dla VM (domyślnie: 2)"
       echo "  --bridge-port PORT       Port dla VM Bridge (domyślnie: 5678)"
       echo "  --agent-interval SECS    Interwał agenta w sekundach (domyślnie: 10)"
-      echo "  --install-dir KATALOG    Katalog instalacyjny (domyślnie: /opt/digital-twin)"
-      echo "  --config-dir KATALOG     Katalog konfiguracyjny (domyślnie: /etc/digital-twin)"
-      echo "  --state-dir KATALOG      Katalog stanów (domyślnie: /var/lib/digital-twin)"
-      echo "  --log-dir KATALOG        Katalog logów (domyślnie: /var/log/digital-twin)"
+      echo "  --install-dir KATALOG    Katalog instalacyjny (domyślnie: /opt/safetytwin)"
+      echo "  --config-dir KATALOG     Katalog konfiguracyjny (domyślnie: /etc/safetytwin)"
+      echo "  --state-dir KATALOG      Katalog stanów (domyślnie: /var/lib/safetytwin)"
+      echo "  --log-dir KATALOG        Katalog logów (domyślnie: /var/log/safetytwin)"
       echo "  --help                   Wyświetla tę pomoc"
       exit 0
       ;;
@@ -251,7 +251,7 @@ install_agent() {
     cd "$TMP_DIR"
 
     # Inicjalizacja modułu Go
-    go mod init digital-twin/agent
+    go mod init safetytwin/agent
 
     # Dodajemy zależności
     go get github.com/shirou/gopsutil/v3
@@ -265,7 +265,7 @@ install_agent() {
     # W tym miejscu zakładamy, że mamy już przygotowane pliki binarne
 
     # Kompilacja
-    go build -o "$INSTALL_DIR/digital-twin-agent" agent/main.go
+    go build -o "$INSTALL_DIR/safetytwin-agent" agent/main.go
 
     # Sprzątanie
     cd - > /dev/null
@@ -275,8 +275,8 @@ install_agent() {
     # Tu skopiowalibyśmy prekompilowaną wersję z repozytorium
 
     # Dla potrzeb tego skryptu tworzymy pustą binarkę
-    touch "$INSTALL_DIR/digital-twin-agent"
-    chmod +x "$INSTALL_DIR/digital-twin-agent"
+    touch "$INSTALL_DIR/safetytwin-agent"
+    chmod +x "$INSTALL_DIR/safetytwin-agent"
   fi
 
   # Konfiguracja agenta
@@ -293,19 +293,19 @@ install_agent() {
 EOF
 
   # Tworzenie usługi systemd
-  cp services/digital-twin-agent.service /etc/systemd/system/digital-twin-agent.service
+  cp services/safetytwin-agent.service /etc/systemd/system/safetytwin-agent.service
 [Unit]
 Description=Digital Twin Agent
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$INSTALL_DIR/digital-twin-agent -config $CONFIG_DIR/agent-config.json
+ExecStart=$INSTALL_DIR/safetytwin-agent -config $CONFIG_DIR/agent-config.json
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-agent
+SyslogIdentifier=safetytwin-agent
 User=root
 Group=root
 WorkingDirectory=$INSTALL_DIR
@@ -364,7 +364,7 @@ After=network.target
 [Service]
 Type=simple
 User={{ item.user | default('root') }}
-ExecStart=/tmp/digital-twin-processes/process_{{ item.name }}_{{ item.pid }}.sh
+ExecStart=/tmp/safetytwin-processes/process_{{ item.name }}_{{ item.pid }}.sh
 Restart=on-failure
 RestartSec=5
 {% if item.cwd is defined %}
@@ -444,7 +444,7 @@ EOF
 vm_name: $VM_NAME
 libvirt_uri: qemu:///system
 vm_user: root
-vm_password: digital-twin-password
+vm_password: safetytwin-password
 vm_key_path: $CONFIG_DIR/ssh/id_rsa
 ansible_inventory: $CONFIG_DIR/inventory.yml
 ansible_playbook: $INSTALL_DIR/apply_services.yml
@@ -454,7 +454,7 @@ max_snapshots: 10
 EOF
 
   # Tworzenie usługi systemd
-  cp services/digital-twin-bridge.service /etc/systemd/system/digital-twin-bridge.service
+  cp services/safetytwin-bridge.service /etc/systemd/system/safetytwin-bridge.service
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service
@@ -466,7 +466,7 @@ Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-bridge
+SyslogIdentifier=safetytwin-bridge
 User=root
 Group=root
 WorkingDirectory=$INSTALL_DIR
@@ -486,7 +486,7 @@ EOF
   become: yes
   vars:
     config_file: "{{ config_file | default('/var/lib/vm-bridge/states/service_config.yaml') }}"
-    log_file: "/var/log/digital-twin-updates.log"
+    log_file: "/var/log/safetytwin-updates.log"
 
   pre_tasks:
     - name: Wczytaj konfigurację usług
@@ -546,7 +546,7 @@ create_base_vm() {
 
   # Wygeneruj klucz SSH
   if [ ! -f "$CONFIG_DIR/ssh/id_rsa" ]; then
-    ssh-keygen -t rsa -b 4096 -f "$CONFIG_DIR/ssh/id_rsa" -N "" -C "digital-twin@localhost"
+    ssh-keygen -t rsa -b 4096 -f "$CONFIG_DIR/ssh/id_rsa" -N "" -C "safetytwin@localhost"
   fi
 
   # Utwórz plik cloud-init meta-data
@@ -562,7 +562,7 @@ hostname: $VM_NAME
 users:
   - name: root
     lock_passwd: false
-    hashed_passwd: $(openssl passwd -6 "digital-twin-password" 2>/dev/null || echo '$6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.')
+    hashed_passwd: $(openssl passwd -6 "safetytwin-password" 2>/dev/null || echo '$6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.')
     ssh_authorized_keys:
       - $(cat "$CONFIG_DIR/ssh/id_rsa.pub")
 ssh_pwauth: true
@@ -689,19 +689,19 @@ start_services() {
   systemctl daemon-reload
 
   # Włącz i uruchom usługi
-  systemctl enable digital-twin-agent.service
-  systemctl enable digital-twin-bridge.service
-  systemctl start digital-twin-agent.service
-  systemctl start digital-twin-bridge.service
+  systemctl enable safetytwin-agent.service
+  systemctl enable safetytwin-bridge.service
+  systemctl start safetytwin-agent.service
+  systemctl start safetytwin-bridge.service
 
   log_success "Usługi uruchomione pomyślnie."
 
   # Sprawdź status usług
   log "Status usługi agenta:"
-  systemctl status digital-twin-agent.service --no-pager
+  systemctl status safetytwin-agent.service --no-pager
 
   log "Status usługi VM Bridge:"
-  systemctl status digital-twin-bridge.service --no-pager
+  systemctl status safetytwin-bridge.service --no-pager
 }
 
 # Wyświetl podsumowanie
@@ -716,7 +716,7 @@ show_summary() {
   echo -e "Instalacja zakończona pomyślnie. Oto podsumowanie:"
   echo
   echo -e "1. ${BLUE}Agent monitorujący${NC} działa na tym komputerze"
-  echo -e "   Status: $(systemctl is-active digital-twin-agent.service)"
+  echo -e "   Status: $(systemctl is-active safetytwin-agent.service)"
   echo -e "   Konfiguracja: $CONFIG_DIR/agent-config.json"
   echo -e "   Logi: $LOG_DIR/agent.log"
   echo
@@ -730,8 +730,8 @@ show_summary() {
   echo -e "   Endpoint API: http://$VM_IP:$BRIDGE_PORT/api/v1"
   echo
   echo -e "Możesz monitorować logi poprzez:"
-  echo -e "   journalctl -fu digital-twin-agent"
-  echo -e "   journalctl -fu digital-twin-bridge"
+  echo -e "   journalctl -fu safetytwin-agent"
+  echo -e "   journalctl -fu safetytwin-bridge"
   echo
   echo -e "${GREEN}=================================================${NC}"
   echo
@@ -770,18 +770,18 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Katalogi instalacyjne
-INSTALL_DIR="/opt/digital-twin"
-CONFIG_DIR="/etc/digital-twin"
-STATE_DIR="/var/lib/digital-twin"
-LOG_DIR="/var/log/digital-twin"
+INSTALL_DIR="/opt/safetytwin"
+CONFIG_DIR="/etc/safetytwin"
+STATE_DIR="/var/lib/safetytwin"
+LOG_DIR="/var/log/safetytwin"
 
 # Ustawienia domyślne
-VM_NAME="digital-twin-vm"
+VM_NAME="safetytwin-vm"
 VM_MEMORY=4096  # MB
 VM_VCPUS=2
 BRIDGE_PORT=5678
 AGENT_INTERVAL=10
-REPO_URL="https://github.com/digital-twin-system/digital-twin.git"
+REPO_URL="https://github.com/safetytwin/safetytwin.git"
 
 # Funkcje pomocnicze
 log() {
@@ -844,15 +844,15 @@ while [[ $# -gt 0 ]]; do
       echo "Użycie: $0 [OPCJE]"
       echo ""
       echo "Dostępne opcje:"
-      echo "  --vm-name NAZWA          Nazwa maszyny wirtualnej (domyślnie: digital-twin-vm)"
+      echo "  --vm-name NAZWA          Nazwa maszyny wirtualnej (domyślnie: safetytwin-vm)"
       echo "  --vm-memory PAMIĘĆ       Ilość pamięci dla VM w MB (domyślnie: 4096)"
       echo "  --vm-vcpus VCPUS         Liczba vCPU dla VM (domyślnie: 2)"
       echo "  --bridge-port PORT       Port dla VM Bridge (domyślnie: 5678)"
       echo "  --agent-interval SECS    Interwał agenta w sekundach (domyślnie: 10)"
-      echo "  --install-dir KATALOG    Katalog instalacyjny (domyślnie: /opt/digital-twin)"
-      echo "  --config-dir KATALOG     Katalog konfiguracyjny (domyślnie: /etc/digital-twin)"
-      echo "  --state-dir KATALOG      Katalog stanów (domyślnie: /var/lib/digital-twin)"
-      echo "  --log-dir KATALOG        Katalog logów (domyślnie: /var/log/digital-twin)"
+      echo "  --install-dir KATALOG    Katalog instalacyjny (domyślnie: /opt/safetytwin)"
+      echo "  --config-dir KATALOG     Katalog konfiguracyjny (domyślnie: /etc/safetytwin)"
+      echo "  --state-dir KATALOG      Katalog stanów (domyślnie: /var/lib/safetytwin)"
+      echo "  --log-dir KATALOG        Katalog logów (domyślnie: /var/log/safetytwin)"
       echo "  --help                   Wyświetla tę pomoc"
       exit 0
       ;;

@@ -3,12 +3,12 @@
 
 # Zmienne
 SHELL := /bin/bash
-INSTALL_DIR = /opt/digital-twin
-CONFIG_DIR = /etc/digital-twin
-STATE_DIR = /var/lib/digital-twin
-LOG_DIR = /var/log/digital-twin
+INSTALL_DIR = /opt/safetytwin
+CONFIG_DIR = /etc/safetytwin
+STATE_DIR = /var/lib/safetytwin
+LOG_DIR = /var/log/safetytwin
 
-VM_NAME = digital-twin-vm
+VM_NAME = safetytwin-vm
 VM_MEMORY = 4096
 VM_VCPUS = 2
 BRIDGE_PORT = 5678
@@ -57,7 +57,7 @@ install: dependencies agent vm-bridge vm
 	$(SUDO) mkdir -p $(LOG_DIR)
 	
 	# Skopiuj pliki
-	$(SUDO) cp -r agent/bin/digital-twin-agent $(INSTALL_DIR)/
+	$(SUDO) cp -r agent/bin/safetytwin-agent $(INSTALL_DIR)/
 	$(SUDO) cp -r vm-bridge/vm_bridge.py $(INSTALL_DIR)/
 	$(SUDO) cp -r vm-bridge/utils $(INSTALL_DIR)/utils
 	$(SUDO) cp -r vm-bridge/templates $(CONFIG_DIR)/templates
@@ -68,31 +68,31 @@ install: dependencies agent vm-bridge vm
 	$(SUDO) cp configs/vm-bridge.yaml $(CONFIG_DIR)/
 	
 	# Ustaw uprawnienia
-	$(SUDO) chmod +x $(INSTALL_DIR)/digital-twin-agent
+	$(SUDO) chmod +x $(INSTALL_DIR)/safetytwin-agent
 	$(SUDO) chmod +x $(INSTALL_DIR)/vm_bridge.py
 	
 	# Utwórz usługi systemd
-	$(SUDO) cp systemd/digital-twin-agent.service /etc/systemd/system/
-	$(SUDO) cp systemd/digital-twin-bridge.service /etc/systemd/system/
+	$(SUDO) cp systemd/safetytwin-agent.service /etc/systemd/system/
+	$(SUDO) cp systemd/safetytwin-bridge.service /etc/systemd/system/
 	$(SUDO) systemctl daemon-reload
 	
 	@echo "Instalacja zakończona pomyślnie."
 	@echo "Aby uruchomić usługi, wykonaj:"
-	@echo "  sudo systemctl enable --now digital-twin-agent.service"
-	@echo "  sudo systemctl enable --now digital-twin-bridge.service"
+	@echo "  sudo systemctl enable --now safetytwin-agent.service"
+	@echo "  sudo systemctl enable --now safetytwin-bridge.service"
 
 uninstall:
 	@echo "Odinstalowywanie systemu cyfrowego bliźniaka..."
 	
 	# Zatrzymaj usługi
-	-$(SUDO) systemctl stop digital-twin-agent.service || true
-	-$(SUDO) systemctl stop digital-twin-bridge.service || true
-	-$(SUDO) systemctl disable digital-twin-agent.service || true
-	-$(SUDO) systemctl disable digital-twin-bridge.service || true
+	-$(SUDO) systemctl stop safetytwin-agent.service || true
+	-$(SUDO) systemctl stop safetytwin-bridge.service || true
+	-$(SUDO) systemctl disable safetytwin-agent.service || true
+	-$(SUDO) systemctl disable safetytwin-bridge.service || true
 	
 	# Usuń usługi systemd
-	-$(SUDO) rm -f /etc/systemd/system/digital-twin-agent.service || true
-	-$(SUDO) rm -f /etc/systemd/system/digital-twin-bridge.service || true
+	-$(SUDO) rm -f /etc/systemd/system/safetytwin-agent.service || true
+	-$(SUDO) rm -f /etc/systemd/system/safetytwin-bridge.service || true
 	-$(SUDO) systemctl daemon-reload
 	
 	# Zatrzymaj VM
@@ -139,7 +139,7 @@ agent:
 	mkdir -p agent/bin
 	
 	# Zbuduj agenta
-	cd agent && go build -o bin/digital-twin-agent main.go
+	cd agent && go build -o bin/safetytwin-agent main.go
 	
 	@echo "Agent zbudowany pomyślnie."
 
@@ -155,7 +155,7 @@ vm-bridge:
 vm_name: $(VM_NAME)
 libvirt_uri: qemu:///system
 vm_user: root
-vm_password: digital-twin-password
+vm_password: safetytwin-password
 vm_key_path: $(CONFIG_DIR)/ssh/id_rsa
 ansible_inventory: $(CONFIG_DIR)/inventory.yml
 ansible_playbook: $(INSTALL_DIR)/apply_services.yml
@@ -179,19 +179,19 @@ EOF
 	
 	# Utwórz usługi systemd
 	mkdir -p systemd
-	cat > systemd/digital-twin-agent.service << EOF
+	cat > systemd/safetytwin-agent.service << EOF
 [Unit]
 Description=Digital Twin Agent
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$(INSTALL_DIR)/digital-twin-agent -config $(CONFIG_DIR)/agent-config.json
+ExecStart=$(INSTALL_DIR)/safetytwin-agent -config $(CONFIG_DIR)/agent-config.json
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-agent
+SyslogIdentifier=safetytwin-agent
 User=root
 Group=root
 WorkingDirectory=$(INSTALL_DIR)
@@ -200,7 +200,7 @@ WorkingDirectory=$(INSTALL_DIR)
 WantedBy=multi-user.target
 EOF
 
-	cat > systemd/digital-twin-bridge.service << EOF
+	cat > systemd/safetytwin-bridge.service << EOF
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service
@@ -212,7 +212,7 @@ Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-bridge
+SyslogIdentifier=safetytwin-bridge
 User=root
 Group=root
 WorkingDirectory=$(INSTALL_DIR)
@@ -244,23 +244,23 @@ vm:
 	
 	# Wygeneruj klucz SSH
 	if [ ! -f $(CONFIG_DIR)/ssh/id_rsa ]; then \
-		$(SUDO) ssh-keygen -t rsa -b 4096 -f $(CONFIG_DIR)/ssh/id_rsa -N "" -C "digital-twin@localhost"; \
+		$(SUDO) ssh-keygen -t rsa -b 4096 -f $(CONFIG_DIR)/ssh/id_rsa -N "" -C "safetytwin@localhost"; \
 	fi
 	
 	# Utwórz plik cloud-init meta-data
 	cat > $(STATE_DIR)/cloud-init/meta-data << EOF
-instance-id: digital-twin-vm
-local-hostname: digital-twin-vm
+instance-id: safetytwin-vm
+local-hostname: safetytwin-vm
 EOF
 
 	# Utwórz plik cloud-init user-data
 	cat > $(STATE_DIR)/cloud-init/user-data << EOF
 #cloud-config
-hostname: digital-twin-vm
+hostname: safetytwin-vm
 users:
   - name: root
     lock_passwd: false
-    hashed_passwd: $(shell mkpasswd -m sha-512 -S $(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8) "digital-twin-password" 2>/dev/null || echo '$6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.')
+    hashed_passwd: $(shell mkpasswd -m sha-512 -S $(shell head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8) "safetytwin-password" 2>/dev/null || echo '$6$randomsalt$yboGI5eoKkxLrUw0QRuGRTMExQDSIJQ.frd9S.9I15jgnEzvxTLbXbKmpEHzXHZiwBzEApLM8msk8s3YV.byt.')
     ssh_authorized_keys:
       - $(shell cat $(CONFIG_DIR)/ssh/id_rsa.pub)
 ssh_pwauth: true

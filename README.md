@@ -653,12 +653,12 @@ Prosty w użyciu skrypt instalacyjny całego systemu:
 
 3. Możesz monitorować logi za pomocą:
    ```bash
-   journalctl -fu digital-twin-agent
+   journalctl -fu safetytwin-agent
    ```
 
 4. Aby uzyskać dostęp do VM:
    ```bash
-   ssh -i /etc/digital-twin/ssh/id_rsa root@[VM_IP]
+   ssh -i /etc/safetytwin/ssh/id_rsa root@[VM_IP]
    ```
 
 ## Możliwości Rozszerzenia
