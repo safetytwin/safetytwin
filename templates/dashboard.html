@@ -29,8 +29,31 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top" style="z-index:1030;">
 
+</nav>
 <!-- SHELL DO MASZYNY WIRTUALNEJ -->
 <div class="container mb-4" id="shell-vm">
+  <div class="card">
+    <div class="card-body">
+      <form id="shell-form" class="row g-2 align-items-center">
+        <div class="col-auto"><b>Połącz się z powłoką wybranej maszyny wirtualnej:</b></div>
+        <div class="col-auto">
+          <select class="form-select" id="vm-select" name="vm_name" style="width:auto;">
+            <option value="safetytwin-vm">safetytwin-vm</option>
+            <option value="test-vm">test-vm</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-success">Połącz</button>
+        </div>
+      </form>
+      <div class="text-muted mt-2 mb-2" style="font-size:0.95em">Dane logowania są automatycznie pobierane z pliku <code>.env</code></div>
+      <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
+        Połącz, by uzyskać dostęp do powłoki VM
+      </div>
+    </div>
+  </div>
+</div>
+
   <div class="card">
     <div class="card-body">
       <form id="shell-form" class="row g-2 align-items-center">

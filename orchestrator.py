@@ -12,8 +12,16 @@ LOG_AGENT = '/var/log/syslog'
 
 @app.get("/shell/{vm_name}")
 def shell_vm(vm_name: str):
-    # TODO: Integracja z gotty/shellinabox
-    url = f"http://localhost:8080/?vm={vm_name}"
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+    user = os.getenv('VM_USER')
+    password = os.getenv('VM_PASS')
+    base_url = f"http://localhost:8080/?vm={vm_name}"
+    if user and password:
+        url = f"{base_url}&user={user}&pass={password}"
+    else:
+        url = base_url
     return JSONResponse({"url": url})
 
 # --- Dashboard ---
