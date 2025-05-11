@@ -34,7 +34,7 @@ if [ -f "$AGENT_UNIT" ] && [ -f "$AGENT_SH" ]; then
 fi
 
 # Restart usług orchestratora i agenta (jeśli istnieją)
-for svc in orchestrator.service safetytwin-agent.service agent_send_state.service; do
+for svc in services/orchestrator.service services/safetytwin-agent.service services/agent_send_state.service; do
   if systemctl list-unit-files | grep -q "$svc"; then
     echo "[INFO] Restartuję usługę: $svc"
     sudo systemctl restart "$svc"

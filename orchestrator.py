@@ -7,7 +7,9 @@ import json, subprocess, difflib, os
 from datetime import datetime
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+import os
+TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 STATE_FILE = '/tmp/last_state.json'
 LOG_ORCH = '/var/log/syslog'  # lub /var/log/messages na CentOS
 LOG_AGENT = '/var/log/syslog'
@@ -133,6 +135,14 @@ def vm_grid(request: Request):
             parts = line.strip().split()
             if len(parts) >= 2:
                 vms.append(parts[1])
+        # Jeśli nie ma żadnych VM, utwórz domyślną
+        if not vms:
+            subprocess.run(['bash', 'scripts/create-vm.sh'], cwd=os.path.dirname(__file__), check=True)
+            out = subprocess.check_output(['virsh', 'list', '--all'], encoding='utf-8', errors='ignore')
+            for line in out.splitlines()[2:]:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    vms.append(parts[1])
     except Exception:
         pass
     # Pobierz snapshoty dla każdej VM (max 3 najnowsze)

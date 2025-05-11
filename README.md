@@ -43,6 +43,15 @@
 - **Nowoczesne menu nawigacyjne:**
   - Sticky-top, responsywne, szybka nawigacja po wszystkich sekcjach dashboardu (smooth scroll).
 
+- **Ujednolicone menu i automatyczna VM:**
+  - Dashboard i VM Grid mają identyczne sticky-top menu nawigacyjne dla spójności i wygody.
+  - Jeśli menu nie wyświetla się poprawnie, wyczyść cache przeglądarki i odśwież stronę.
+  - Backend automatycznie tworzy domyślną VM (`safetytwin-vm`) jeśli nie istnieje żadna.
+  - Jeśli VM się nie pojawia:
+    - Sprawdź logi backendu (orchestrator.py) pod kątem błędów wykonania skryptu.
+    - Upewnij się, że masz wymagane uprawnienia do tworzenia VM (np. sudo/libvirt).
+    - Spróbuj uruchomić ręcznie: `bash scripts/create-vm.sh`.
+
 ---
 
 ![diagram.svg](docs/diagram.svg)
@@ -83,10 +92,19 @@ Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w cz
 
 ---
 
+## Rozwiązywanie problemów
 
-**Nowość (2025-05):**
-- Skrypt `repair.sh` automatycznie diagnozuje i naprawia sieć VM po instalacji, zbiera szczegółowe logi diagnostyczne do pliku `/var/lib/safetytwin/TWIN.yaml` oraz automatycznie zamyka aktywne sesje konsoli VM, aby umożliwić zbieranie danych.
-- W przypadku braku możliwości zebrania diagnostyki, skrypt generuje jasne instrukcje ręczne dla użytkownika.
+### Brak maszyn wirtualnych w VM Grid
+- Jeśli VM Grid nie pokazuje żadnej maszyny, backend automatycznie wywoła skrypt `scripts/create-vm.sh` i utworzy domyślną VM (`safetytwin-vm`).
+- Dzięki temu zawsze jest przynajmniej jedna maszyna dostępna do testów i terminala.
+- Jeśli domyślna VM nadal się nie pojawia:
+  - Sprawdź logi backendu (orchestrator.py) pod kątem błędów wykonania skryptu.
+  - Upewnij się, że masz wymagane uprawnienia do tworzenia VM (np. sudo/libvirt).
+  - Spróbuj uruchomić ręcznie: `bash scripts/create-vm.sh`.
+
+### Ujednolicone menu nawigacyjne
+- Dashboard i VM Grid mają identyczne sticky-top menu nawigacyjne dla spójności i wygody.
+- Jeśli menu nie wyświetla się poprawnie, wyczyść cache przeglądarki i odśwież stronę.
 
 ---
 
@@ -119,40 +137,7 @@ Aby cloud-init działał poprawnie i użytkownik `ubuntu` został utworzony z ha
 - Sprawdź obecność `/dev/cdrom` lub `/dev/hdc` w VM oraz logi cloud-init (`/var/log/cloud-init.log`).
 - Szczegóły i przykłady znajdziesz w `restart.sh` oraz `install.sh`.
 
-
-```
-┌─────────────────────────┐     ┌─────────────────────────┐
-│  System monitorowany    │     │   System zarządzający   │
-│  (Host fizyczny)        │     │   (Kontroler)           │
-│                         │     │                         │
-│  ┌───────────────────┐  │     │  ┌───────────────────┐  │
-│  │ Agent kolekcji    │──┼─────┼─▶│ Orchestrator      │  │
-│  │ danych            │  │     │  │                   │  │
-│  └───────────────────┘  │     │  └───────────────────┘  │
-│                         │     │           │             │
-└─────────────────────────┘     │           ▼             │
-                                │  ┌───────────────────┐  │
-                                │  │ State Store       │  │
-                                │  │ (etcd/Consul)     │  │
-                                │  └───────────────────┘  │
-                                │           │             │
-                                │           ▼             │
-                                │  ┌───────────────────┐  │
-                                │  │ VM Manager        │  │
-                                │  │ (libvirt)         │  │
-                                │  └───────────────────┘  │
-                                │           │             │
-                                └───────────┼─────────────┘
-                                            │
-                                            ▼
-                               ┌──────────────────────────────┐
-                               │     Cyfrowy Bliźniak (VM)    │
-                               │                              │
-                               │  ┌──────────────────────┐    │
-                               │  │ Usługi               │    │
-                               │  └──────────────────────┘    │
-                               └──────────────────────────────┘
-```
+---
 
 ## Główne komponenty
 

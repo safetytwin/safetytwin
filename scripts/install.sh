@@ -283,7 +283,7 @@ install_agent() {
 EOF
 
   # Tworzenie usługi systemd
-  cat > "/etc/systemd/system/digital-twin-agent.service" << EOF
+  cp services/digital-twin-agent.service /etc/systemd/system/digital-twin-agent.service
 [Unit]
 Description=Digital Twin Agent
 After=network.target
@@ -444,7 +444,7 @@ max_snapshots: 10
 EOF
 
   # Tworzenie usługi systemd
-  cat > "/etc/systemd/system/digital-twin-bridge.service" << EOF
+  cp services/digital-twin-bridge.service /etc/systemd/system/digital-twin-bridge.service
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service

@@ -48,6 +48,26 @@
     </div>
   </div>
 </nav>
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/dashboard">SafetyTwin</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/vm_grid' %}active{% endif %}" href="/vm_grid">Grid VM</a></li>
+        <li class="nav-item"><a class="nav-link" href="#history">Historia zmian</a></li>
+        <li class="nav-item"><a class="nav-link" href="#snapshots">Snapshoty VM</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-agent">Logi agenta</a></li>
+        <li class="nav-item"><a class="nav-link" href="#sync">Synchronizacja</a></li>
+        <li class="nav-item"><a class="nav-link" href="#backup">Backupy</a></li>
+        <li class="nav-item"><a class="nav-link disabled" href="#">Wyloguj</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
 <!-- SHELL DO MASZYNY WIRTUALNEJ -->
 <div class="container mb-4" id="shell-vm">
   <div class="card">

@@ -257,13 +257,13 @@ create_default_file "/etc/safetytwin/inventory.yml" 'all:
 # --- KONIEC TWORZENIA DOMYŚLNYCH PLIKÓW ---
 
 # Pliki kluczowe (nie nadpisujemy, tylko ostrzegamy jeśli brak)
-for f in /etc/safetytwin/agent-config.json /etc/safetytwin/bridge-config.yaml /etc/safetytwin/ssh/id_rsa /etc/safetytwin/ssh/id_rsa.pub /etc/safetytwin/inventory.yml /etc/systemd/system/safetytwin-agent.service /etc/systemd/system/safetytwin-bridge.service /var/lib/safetytwin/cloud-init/user-data /var/lib/safetytwin/cloud-init/meta-data /var/lib/safetytwin/images/ubuntu-base.img /var/lib/safetytwin/vm-definition.xml; do
+for f in /etc/safetytwin/agent-config.json /etc/safetytwin/bridge-config.yaml /etc/safetytwin/ssh/id_rsa /etc/safetytwin/ssh/id_rsa.pub /etc/safetytwin/inventory.yml services/safetytwin-agent.service /etc/systemd/system/safetytwin-bridge.service /var/lib/safetytwin/cloud-init/user-data /var/lib/safetytwin/cloud-init/meta-data /var/lib/safetytwin/images/ubuntu-base.img /var/lib/safetytwin/vm-definition.xml; do
   repair_file "$f" file
 done
 
 # Usługi
-repair_service safetytwin-agent.service
-repair_service safetytwin-bridge.service
+repair_service services/safetytwin-agent.service
+repair_service services/safetytwin-bridge.service
 repair_service libvirtd.service
 
 # Cron monitoring
