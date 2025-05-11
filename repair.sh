@@ -311,7 +311,7 @@ repair_vm_network
 fix_vm_network_config
 
 # Diagnostyka VM i zapis do TWIN.yaml
-repair_twin_vm_diagnostics() {
+repair_twin_diagnostics() {
   log "[TWIN] Zbieram diagnostykę z VM i zapisuję do /var/lib/safetytwin/TWIN.yaml..."
   # Zamknij aktywną sesję virsh console jeśli istnieje
   if sudo virsh console safetytwin-vm --force 2>/dev/null | grep -q 'Closed console session'; then
@@ -363,7 +363,7 @@ EOF
 }
 
 
-repair_twin_vm_diagnostics
+repair_twin_diagnostics
 
 # Podsumowanie naprawy
 log_ok "Naprawa zakończona. Sprawdź ponownie INSTALL_RESULT.yaml oraz TWIN.yaml."

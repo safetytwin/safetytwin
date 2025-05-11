@@ -514,6 +514,125 @@ EOF
 
 # Tworzenie bazowej maszyny wirtualnej
 create_base_vm() {
+  log "Tworzenie bazowej maszyny wirtualnej (nowoczesny provisioning)..."
+
+  # Konfiguracja
+  VM_NAME=${1:-safetytwin-vm}
+  VM_MEMORY=2048
+  VM_CPUS=2
+  VM_DISK_SIZE=20G
+  USERNAME="ubuntu"
+  PASSWORD="ubuntu"
+  INSTALL_PACKAGES="qemu-guest-agent openssh-server python3 net-tools iproute2"
+
+  WORK_DIR="/var/lib/safetytwin"
+  CLOUD_INIT_DIR="$WORK_DIR/cloud-init"
+  IMG_DIR="$WORK_DIR/images"
+  USER_DATA="$CLOUD_INIT_DIR/user-data"
+  META_DATA="$CLOUD_INIT_DIR/meta-data"
+  ISO="$CLOUD_INIT_DIR/cloud-init.iso"
+  VM_IMAGE="$IMG_DIR/$VM_NAME.qcow2"
+
+  mkdir -p "$CLOUD_INIT_DIR" "$IMG_DIR"
+
+  # Usuwanie istniejącej VM (jeśli istnieje)
+  if virsh dominfo "$VM_NAME" &>/dev/null; then
+    log_warning "VM '$VM_NAME' już istnieje. Usuwam..."
+    virsh destroy "$VM_NAME" &>/dev/null || true
+    virsh undefine "$VM_NAME" --remove-all-storage --nvram &>/dev/null || true
+  fi
+
+  # Pobierz oficjalny obraz Ubuntu cloud-init, jeśli brak
+  UBUNTU_IMAGE="$IMG_DIR/jammy-server-cloudimg-amd64.img"
+  if [ -f "$UBUNTU_IMAGE" ]; then
+    log "Używam istniejącego obrazu Ubuntu: $UBUNTU_IMAGE"
+  else
+    log "Pobieram oficjalny obraz Ubuntu cloud-init..."
+    wget -O "$UBUNTU_IMAGE" "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+  fi
+
+  # Utwórz kopię dla VM
+  log "Tworzę obraz dysku VM ($VM_DISK_SIZE)..."
+  cp "$UBUNTU_IMAGE" "$VM_IMAGE"
+  qemu-img resize "$VM_IMAGE" "$VM_DISK_SIZE"
+
+  # Cloud-init user-data/meta-data
+  log "Generuję pliki cloud-init..."
+  cat > "$USER_DATA" << EOF
+#cloud-config
+hostname: $VM_NAME
+users:
+  - name: $USERNAME
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: users, admin
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: '$PASSWORD'
+ssh_pwauth: true
+disable_root: false
+
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      dhcp4: true
+
+package_update: true
+package_upgrade: true
+packages:
+$(for pkg in $INSTALL_PACKAGES; do echo "  - $pkg"; done)
+
+runcmd:
+  - echo '$USERNAME:$PASSWORD' | chpasswd
+  - sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  - systemctl restart ssh
+EOF
+
+  cat > "$META_DATA" << EOF
+instance-id: $VM_NAME
+local-hostname: $VM_NAME
+EOF
+
+  # ISO cloud-init
+  log "Tworzę ISO cloud-init..."
+  genisoimage -output "$ISO" -volid cidata -joliet -rock "$META_DATA" "$USER_DATA"
+  chmod 644 "$ISO"
+  chown libvirt-qemu:libvirt-qemu "$ISO" "$VM_IMAGE" 2>/dev/null || true
+
+  # Tworzenie VM
+  log "Tworzę i uruchamiam VM..."
+  virt-install --name "$VM_NAME" \
+    --memory "$VM_MEMORY" \
+    --vcpus "$VM_CPUS" \
+    --disk "$VM_IMAGE",device=disk,format=qcow2 \
+    --disk "$ISO",device=cdrom \
+    --os-variant ubuntu22.04 \
+    --virt-type kvm \
+    --network default \
+    --graphics none \
+    --import \
+    --noautoconsole
+
+  log "Czekam na przydzielenie adresu IP przez VM..."
+  VM_IP=""
+  for i in {1..12}; do
+    VM_IP=$(virsh domifaddr "$VM_NAME" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+    if [ -n "$VM_IP" ]; then
+      log_success "VM ma adres IP: $VM_IP"
+      break
+    fi
+    sleep 10
+  done
+  if [ -z "$VM_IP" ]; then
+    log_error "Nie udało się uzyskać adresu IP VM. Sprawdź konsolę: sudo virsh console $VM_NAME"
+    return 1
+  fi
+
+  log_success "VM '$VM_NAME' utworzona i uruchomiona! IP: $VM_IP"
+  log_success "Dostęp SSH: ssh $USERNAME@$VM_IP (hasło: $PASSWORD)"
+  log "Dostęp do konsoli: sudo virsh console $VM_NAME"
+  echo "$VM_IP" > "$WORK_DIR/${VM_NAME}.ip"
+}
   log "Tworzenie bazowej maszyny wirtualnej..."
 
   VM_NAME=$DEFAULT_VM_NAME
@@ -523,7 +642,7 @@ create_base_vm() {
   # Sprawdź, czy VM już istnieje
   if virsh dominfo "$VM_NAME" &>/dev/null; then
     log_warning "Maszyna wirtualna '$VM_NAME' już istnieje. Pomijanie tworzenia."
-    return
+    return 0 2>/dev/null || true
   fi
 
   # Utwórz katalog na obrazy VM
@@ -752,7 +871,6 @@ EOF
   ansible-playbook -i "$CONFIG_DIR/inventory.yml" "$INSTALL_DIR/install_bridge_on_vm.yml"
 
   log_success "VM Bridge zainstalowany na maszynie wirtualnej."
-}
 
 # Uruchomienie usług
 start_services() {
@@ -889,7 +1007,7 @@ main() {
   install_agent
   install_vm_bridge_service
   create_base_vm
-  install_vm_bridge_on_vm
+  # install_vm_bridge_on_vm
   start_services
   show_summary
 
