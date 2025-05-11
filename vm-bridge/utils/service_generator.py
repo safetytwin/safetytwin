@@ -94,7 +94,7 @@ After=network.target
 [Service]
 Type=simple
 User={{ item.user | default('root') }}
-ExecStart=/tmp/digital-twin-processes/process_{{ item.name }}_{{ item.pid }}.sh
+ExecStart=/tmp/safetytwin-processes/process_{{ item.name }}_{{ item.pid }}.sh
 Restart=on-failure
 RestartSec=5
 {% if item.cwd is defined %}

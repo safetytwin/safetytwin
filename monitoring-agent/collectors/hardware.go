@@ -1,7 +1,7 @@
 package collectors
 
 import (
-	"digital-twin/agent/models"
+	"safetytwin/agent/models"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"

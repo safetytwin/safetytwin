@@ -11,7 +11,7 @@ class Sender:
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': 'application/json',
-            'User-Agent': 'Digital-Twin-Agent/1.0'
+            'User-Agent': 'safetytwin-Agent/1.0'
         })
         self.timeout = timeout
 

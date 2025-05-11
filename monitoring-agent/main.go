@@ -1,9 +1,9 @@
 package main
 
 import (
-	"digital-twin/agent/collectors"
-	"digital-twin/agent/models"
-	"digital-twin/agent/utils"
+	"safetytwin/agent/collectors"
+	"safetytwin/agent/models"
+	"safetytwin/agent/utils"
 	"flag"
 	"log"
 	"time"

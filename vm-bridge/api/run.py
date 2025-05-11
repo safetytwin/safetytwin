@@ -55,8 +55,8 @@ def parse_args():
     
     parser.add_argument(
         '--vm-name', 
-        default=os.environ.get('VM_NAME', 'digital-twin'),
-        help='Nazwa maszyny wirtualnej (domyślnie: digital-twin)'
+        default=os.environ.get('VM_NAME', 'safetytwin'),
+        help='Nazwa maszyny wirtualnej (domyślnie: safetytwin)'
     )
     
     parser.add_argument(

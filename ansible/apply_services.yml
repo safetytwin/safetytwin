@@ -9,8 +9,8 @@
   become: yes
   vars:
     config_file: "{{ config_file | default('/var/lib/vm-bridge/states/service_config.yaml') }}"
-    log_file: "/var/log/digital-twin-updates.log"
-    history_dir: "/var/lib/digital-twin/history"
+    log_file: "/var/log/safetytwin-updates.log"
+    history_dir: "/var/lib/safetytwin/history"
 
   pre_tasks:
     - name: Wczytaj konfigurację usług
@@ -176,14 +176,14 @@
       block:
         - name: Utwórz katalog tymczasowy na skrypty
           ansible.builtin.file:
-            path: /tmp/digital-twin-processes
+            path: /tmp/safetytwin-processes
             state: directory
             mode: "0755"
 
         - name: Utwórz skrypty uruchamiające dla procesów
           ansible.builtin.template:
             src: process_launcher.sh.j2
-            dest: "/tmp/digital-twin-processes/process_{{ item.name }}_{{ item.pid }}.sh"
+            dest: "/tmp/safetytwin-processes/process_{{ item.name }}_{{ item.pid }}.sh"
             mode: "0755"
           loop: "{{ service_config.processes }}"
           loop_control:
@@ -238,7 +238,7 @@
       block:
         - name: Ustaw właściwości sieciowe
           ansible.builtin.copy:
-            dest: /etc/sysctl.d/99-digital-twin-network.conf
+            dest: /etc/sysctl.d/99-safetytwin-network.conf
             content: |
               # Konfiguracja sieciowa wygenerowana przez system cyfrowego bliźniaka
               # Wygenerowano: {{ ansible_date_time.iso8601 }}
@@ -251,7 +251,7 @@
             mode: "0644"
 
         - name: Załaduj ustawienia sysctl
-          ansible.builtin.command: sysctl -p /etc/sysctl.d/99-digital-twin-network.conf
+          ansible.builtin.command: sysctl -p /etc/sysctl.d/99-safetytwin-network.conf
           changed_when: true
 
     #
@@ -267,19 +267,19 @@
       block:
         - name: Utwórz katalog na dane LLM
           ansible.builtin.file:
-            path: /opt/digital-twin/llm-data
+            path: /opt/safetytwin/llm-data
             state: directory
             mode: "0755"
 
         - name: Utwórz plik konfiguracyjny dla LLM
           ansible.builtin.copy:
-            dest: /etc/digital-twin/llm-config.yaml
+            dest: /etc/safetytwin/llm-config.yaml
             content: |
               # Konfiguracja LLM wygenerowana przez system cyfrowego bliźniaka
               # Wygenerowano: {{ ansible_date_time.iso8601 }}
               llm:
                 enabled: true
-                data_dir: /opt/digital-twin/llm-data
+                data_dir: /opt/safetytwin/llm-data
                 services:
                 {{ service_config.services | selectattr('is_llm_related', 'defined') | selectattr('is_llm_related') | map('to_nice_yaml') | join('') | indent(2) }}
                 processes:
@@ -304,7 +304,7 @@
     - name: Generuj raport stanu
       ansible.builtin.template:
         src: status_report.j2
-        dest: "/var/lib/digital-twin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
+        dest: "/var/lib/safetytwin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
         mode: "0644"
       vars:
         status_systemd: "{{ ansible_facts.services | dict2items | selectattr('value.state', 'defined') | list | length }}"
@@ -312,7 +312,7 @@
 
     - name: Utwórz link do najnowszego raportu
       ansible.builtin.file:
-        src: "/var/lib/digital-twin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
-        dest: "/var/lib/digital-twin/status_report_latest.txt"
+        src: "/var/lib/safetytwin/status_report_{{ ansible_date_time.iso8601 | regex_replace(':', '-') }}.txt"
+        dest: "/var/lib/safetytwin/status_report_latest.txt"
         state: link
         force: yes

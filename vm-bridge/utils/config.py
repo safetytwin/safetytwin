@@ -19,7 +19,7 @@ class Config:
         self.config_path = config_path
 
         # Wartości domyślne
-        self.vm_name = "digital-twin-vm"
+        self.vm_name = "safetytwin-vm"
         self.libvirt_uri = "qemu:///system"
         self.vm_user = "root"
         self.vm_password = ""

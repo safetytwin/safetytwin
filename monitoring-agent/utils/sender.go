@@ -3,7 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
-	"digital-twin/agent/models"
+	"safetytwin/agent/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -83,7 +83,7 @@ func (s *Sender) SendState(state *models.SystemState) error {
 
 		// Ustaw nagłówki
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("User-Agent", "Digital-Twin-Agent/1.0")
+		req.Header.Set("User-Agent", "safetytwin-Agent/1.0")
 
 		// Wyślij żądanie
 		resp, err := s.client.Do(req)

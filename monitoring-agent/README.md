@@ -58,8 +58,8 @@ github.com/shirou/gopsutil/v3
 
 - `-interval int`: Interwał odczytu w sekundach (domyślnie: 10)
 - `-bridge string`: URL do VM Bridge (domyślnie: "http://localhost:5678/api/v1/update_state")
-- `-log string`: Plik dziennika (domyślnie: "/var/log/digital-twin-agent.log")
-- `-state-dir string`: Katalog na dane stanu (domyślnie: "/var/lib/digital-twin/states")
+- `-log string`: Plik dziennika (domyślnie: "/var/log/safetytwin-agent.log")
+- `-state-dir string`: Katalog na dane stanu (domyślnie: "/var/lib/safetytwin/states")
 - `-proc`: Czy zbierać dane o procesach (domyślnie: true)
 - `-net`: Czy zbierać dane o sieci (domyślnie: true)
 - `-verbose`: Tryb szczegółowego logowania (domyślnie: false)

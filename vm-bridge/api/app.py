@@ -22,7 +22,7 @@ def create_app(config=None):
     app.config.update(
         SECRET_KEY=os.environ.get('SECRET_KEY', 'dev_key_change_in_production'),
         VM_BRIDGE_CONFIG=os.environ.get('VM_BRIDGE_CONFIG', '/etc/vm-bridge.yaml'),
-        VM_NAME=os.environ.get('VM_NAME', 'digital-twin'),
+        VM_NAME=os.environ.get('VM_NAME', 'safetytwin'),
         DEBUG=os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     )
     

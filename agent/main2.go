@@ -1,9 +1,9 @@
 package main
 
 import (
-	"digital-twin/agent/collectors"
-	"digital-twin/agent/models"
-	"digital-twin/agent/utils"
+	"safetytwin/agent/collectors"
+	"safetytwin/agent/models"
+	"safetytwin/agent/utils"
 	"flag"
 	"log"
 	"os"
@@ -25,7 +25,7 @@ func main() {
 	log.Printf("Copyright (c) 2025 %s", AUTHOR)
 
 	// Parsowanie flag wiersza poleceń
-	configPath := flag.String("config", "/etc/digital-twin/agent-config.json", "Ścieżka do pliku konfiguracyjnego")
+	configPath := flag.String("config", "/etc/safetytwin/agent-config.json", "Ścieżka do pliku konfiguracyjnego")
 	version := flag.Bool("version", false, "Wyświetl informacje o wersji i zakończ")
 	flag.Parse()
 

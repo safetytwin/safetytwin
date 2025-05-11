@@ -46,8 +46,8 @@ func main() {
 	// Parsowanie argumentów linii poleceń
 	interval := flag.Int("interval", 10, "Interwał odczytu w sekundach")
 	bridgeURL := flag.String("bridge", "http://localhost:5678/api/v1/update_state", "URL do VM Bridge")
-	logFile := flag.String("log", "/var/log/digital-twin-agent.log", "Plik dziennika")
-	stateDir := flag.String("state-dir", "/var/lib/digital-twin/states", "Katalog na dane stanu")
+	logFile := flag.String("log", "/var/log/safetytwin-agent.log", "Plik dziennika")
+	stateDir := flag.String("state-dir", "/var/lib/safetytwin/states", "Katalog na dane stanu")
 	includeProc := flag.Bool("proc", true, "Czy zbierać dane o procesach")
 	includeNet := flag.Bool("net", true, "Czy zbierać dane o sieci")
 	verbose := flag.Bool("verbose", false, "Tryb szczegółowego logowania")

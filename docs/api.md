@@ -161,7 +161,7 @@ Pobiera szczegółowe informacje o maszynie wirtualnej.
 {
   "status": "success",
   "vm": {
-    "name": "digital-twin-vm",
+    "name": "safetytwin-vm",
     "status": "running",
     "current_snapshot": "state_1620123456",
     "ip_address": "192.168.122.100",
@@ -170,7 +170,7 @@ Pobiera szczegółowe informacje o maszynie wirtualnej.
     "memory_gb": 4.0,
     "disks": [
       {
-        "source": "/var/lib/digital-twin/images/vm.qcow2",
+        "source": "/var/lib/safetytwin/images/vm.qcow2",
         "target": "vda"
       }
     ],
@@ -381,10 +381,10 @@ sudo ufw allow from 192.168.0.0/24 to any port 5678
 # Przykładowa konfiguracja Nginx
 server {
     listen 443 ssl;
-    server_name digital-twin.example.com;
+    server_name safetytwin.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/digital-twin.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/digital-twin.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/safetytwin.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/safetytwin.example.com/privkey.pem;
 
     location / {
         proxy_pass http://VM_IP:5678;

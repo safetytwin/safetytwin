@@ -23,8 +23,8 @@ func LoadConfig(configPath string) (*Config, error) {
 	config := &Config{
 		Interval:         10,
 		BridgeURL:        "http://localhost:5678/api/v1/update_state",
-		LogFile:          "/var/log/digital-twin-agent.log",
-		StateDir:         "/var/lib/digital-twin/states",
+		LogFile:          "/var/log/safetytwin-agent.log",
+		StateDir:         "/var/lib/safetytwin/states",
 		IncludeProcesses: true,
 		IncludeNetwork:   true,
 		Verbose:          false,

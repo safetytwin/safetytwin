@@ -165,7 +165,7 @@
   post_tasks:
     - name: Zapisz dziennik aktualizacji
       ansible.builtin.lineinfile:
-        path: /var/log/digital-twin-updates.log
+        path: /var/log/safetytwin-updates.log
         line: "{{ ansible_date_time.iso8601 }} - Zaktualizowano stan VM"
         create: yes
         mode: "0644"

@@ -1,7 +1,7 @@
 package collectors
 
 import (
-	"digital-twin/agent/models"
+	"safetytwin/agent/models"
 	"encoding/json"
 	"fmt"
 	"log"

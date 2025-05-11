@@ -59,6 +59,25 @@ Ten dokument zawiera szczegółowe informacje na temat instalacji i konfiguracji
 - System operacyjny Linux (Ubuntu 20.04 zalecany)
 - Python 3.7+
 - Ansible 2.9+
+
+---
+
+## Wybór obrazu bazowego i użytkownika VM
+
+Podczas pierwszego uruchomienia skryptu `create-vm.sh` możesz wybrać obraz bazowy, użytkownika i hasło. Wybrane ustawienia zostaną zapisane w pliku `.env` i będą używane domyślnie przy kolejnych uruchomieniach.
+
+| Nr | System/Obraz                                    | Domyślny użytkownik | Hasło   | Link                                                                 |
+|----|-------------------------------------------------|---------------------|---------|----------------------------------------------------------------------|
+| 1  | Ubuntu 22.04 Server Cloud Image                 | ubuntu              | ubuntu  | https://cloud-images.ubuntu.com/releases/jammy/release/20250508/ubuntu-22.04-server-cloudimg-amd64.img |
+| 2  | Ubuntu 22.04 Minimal Cloud Image                | ubuntu              | ubuntu  | https://cloud-images.ubuntu.com/minimal/releases/jammy/release/ubuntu-22.04-minimal-cloudimg-amd64.img |
+| 3  | Debian 12 (Bookworm) Cloud Image                | debian              | debian  | https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2              |
+| 4  | CentOS 9 Stream Cloud Image                     | centos              | centos  | https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2|
+| 5  | Rocky Linux 9 Cloud Image                       | rocky               | rocky   | https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2           |
+
+**Instrukcja:**
+- Po uruchomieniu `create-vm.sh` wybierz numer obrazu z listy.
+- Skrypt automatycznie pobierze obraz, ustawi użytkownika/hasło i zaktualizuje `.env`.
+- Przy kolejnych uruchomieniach te ustawienia będą używane domyślnie (możesz je zmienić edytując `.env` lub usuwając odpowiednie zmienne).
 - Docker (opcjonalnie)
 
 ## Szybka instalacja
@@ -74,8 +93,8 @@ Najszybszym sposobem na instalację systemu jest użycie dostarczonego skryptu i
 
 ```bash
 # Pobierz repozytorium
-git clone https://github.com/digital-twin-system/digital-twin.git
-cd digital-twin
+git clone https://github.com/safetytwin/safetytwin.git
+cd safetytwin
 
 # Uruchom skrypt instalacyjny
 sudo bash scripts/install.sh
@@ -124,15 +143,15 @@ sudo bash scripts/install.sh --vm-memory 8192 --vm-vcpus 4 --bridge-port 6789
 
 Dostępne opcje:
 
-- `--vm-name NAZWA` - Nazwa maszyny wirtualnej (domyślnie: digital-twin-vm)
+- `--vm-name NAZWA` - Nazwa maszyny wirtualnej (domyślnie: safetytwin-vm)
 - `--vm-memory PAMIĘĆ` - Ilość pamięci dla VM w MB (domyślnie: 4096)
 - `--vm-vcpus VCPUS` - Liczba vCPU dla VM (domyślnie: 2)
 - `--bridge-port PORT` - Port dla VM Bridge (domyślnie: 5678)
 - `--agent-interval SECS` - Interwał agenta w sekundach (domyślnie: 10)
-- `--install-dir KATALOG` - Katalog instalacyjny (domyślnie: /opt/digital-twin)
-- `--config-dir KATALOG` - Katalog konfiguracyjny (domyślnie: /etc/digital-twin)
-- `--state-dir KATALOG` - Katalog stanów (domyślnie: /var/lib/digital-twin)
-- `--log-dir KATALOG` - Katalog logów (domyślnie: /var/log/digital-twin)
+- `--install-dir KATALOG` - Katalog instalacyjny (domyślnie: /opt/safetytwin)
+- `--config-dir KATALOG` - Katalog konfiguracyjny (domyślnie: /etc/safetytwin)
+- `--state-dir KATALOG` - Katalog stanów (domyślnie: /var/lib/safetytwin)
+- `--log-dir KATALOG` - Katalog logów (domyślnie: /var/log/safetytwin)
 
 ## Instalacja ręczna
 
@@ -155,32 +174,32 @@ sudo yum install -y git golang gcc make
 
 ```bash
 # Klonuj repozytorium
-git clone https://github.com/digital-twin-system/digital-twin.git
-cd digital-twin/agent
+git clone https://github.com/safetytwin/safetytwin.git
+cd safetytwin/agent
 
 # Kompilacja
-go build -o digital-twin-agent main.go
+go build -o safetytwin-agent main.go
 ```
 
 3. Zainstaluj agenta:
 
 ```bash
 # Utwórz katalogi
-sudo mkdir -p /opt/digital-twin
-sudo mkdir -p /etc/digital-twin
-sudo mkdir -p /var/lib/digital-twin/agent-states
-sudo mkdir -p /var/log/digital-twin
+sudo mkdir -p /opt/safetytwin
+sudo mkdir -p /etc/safetytwin
+sudo mkdir -p /var/lib/safetytwin/agent-states
+sudo mkdir -p /var/log/safetytwin
 
 # Skopiuj plik binarny
-sudo cp digital-twin-agent /opt/digital-twin/
+sudo cp safetytwin-agent /opt/safetytwin/
 
 # Utwórz konfigurację
-sudo bash -c 'cat > /etc/digital-twin/agent-config.json << EOF
+sudo bash -c 'cat > /etc/safetytwin/agent-config.json << EOF
 {
   "interval": 10,
   "bridge_url": "http://localhost:5678/api/v1/update_state",
-  "log_file": "/var/log/digital-twin/agent.log",
-  "state_dir": "/var/lib/digital-twin/agent-states",
+  "log_file": "/var/log/safetytwin/agent.log",
+  "state_dir": "/var/lib/safetytwin/agent-states",
   "include_processes": true,
   "include_network": true,
   "verbose": false
@@ -188,22 +207,22 @@ sudo bash -c 'cat > /etc/digital-twin/agent-config.json << EOF
 EOF'
 
 # Utwórz usługę systemd
-sudo bash -c 'cat > /etc/systemd/system/digital-twin-agent.service << EOF
+sudo bash -c 'cat > /etc/systemd/system/safetytwin-agent.service << EOF
 [Unit]
 Description=Digital Twin Agent
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/digital-twin/digital-twin-agent -config /etc/digital-twin/agent-config.json
+ExecStart=/opt/safetytwin/safetytwin-agent -config /etc/safetytwin/agent-config.json
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-agent
+SyslogIdentifier=safetytwin-agent
 User=root
 Group=root
-WorkingDirectory=/opt/digital-twin
+WorkingDirectory=/opt/safetytwin
 
 [Install]
 WantedBy=multi-user.target
@@ -236,50 +255,50 @@ sudo pip3 install pyyaml jinja2 flask deepdiff paramiko libvirt-python docker
 
 ```bash
 # Utwórz katalogi
-sudo mkdir -p /opt/digital-twin/vm-bridge
-sudo mkdir -p /etc/digital-twin/templates
-sudo mkdir -p /var/lib/digital-twin/states
+sudo mkdir -p /opt/safetytwin/vm-bridge
+sudo mkdir -p /etc/safetytwin/templates
+sudo mkdir -p /var/lib/safetytwin/states
 
 # Skopiuj kod
-sudo cp -r vm-bridge/* /opt/digital-twin/vm-bridge/
-sudo cp vm_bridge.py /opt/digital-twin/
-sudo chmod +x /opt/digital-twin/vm_bridge.py
+sudo cp -r vm-bridge/* /opt/safetytwin/vm-bridge/
+sudo cp vm_bridge.py /opt/safetytwin/
+sudo chmod +x /opt/safetytwin/vm_bridge.py
 
 # Skopiuj szablony
-sudo cp -r ansible/templates/* /etc/digital-twin/templates/
-sudo cp ansible/apply_services.yml /opt/digital-twin/
+sudo cp -r ansible/templates/* /etc/safetytwin/templates/
+sudo cp ansible/apply_services.yml /opt/safetytwin/
 
 # Utwórz konfigurację
-sudo bash -c 'cat > /etc/digital-twin/vm-bridge.yaml << EOF
-vm_name: digital-twin-vm
+sudo bash -c 'cat > /etc/safetytwin/vm-bridge.yaml << EOF
+vm_name: safetytwin-vm
 libvirt_uri: qemu:///system
 vm_user: root
-vm_password: digital-twin-password
-vm_key_path: /etc/digital-twin/ssh/id_rsa
-ansible_inventory: /etc/digital-twin/inventory.yml
-ansible_playbook: /opt/digital-twin/apply_services.yml
-state_dir: /var/lib/digital-twin/states
-templates_dir: /etc/digital-twin/templates
+vm_password: safetytwin-password
+vm_key_path: /etc/safetytwin/ssh/id_rsa
+ansible_inventory: /etc/safetytwin/inventory.yml
+ansible_playbook: /opt/safetytwin/apply_services.yml
+state_dir: /var/lib/safetytwin/states
+templates_dir: /etc/safetytwin/templates
 max_snapshots: 10
 EOF'
 
 # Utwórz usługę systemd
-sudo bash -c 'cat > /etc/systemd/system/digital-twin-bridge.service << EOF
+sudo bash -c 'cat > /etc/systemd/system/safetytwin-bridge.service << EOF
 [Unit]
 Description=Digital Twin VM Bridge
 After=network.target libvirtd.service
 
 [Service]
 Type=simple
-ExecStart=/opt/digital-twin/vm_bridge.py --config /etc/digital-twin/vm-bridge.yaml --port 5678
+ExecStart=/opt/safetytwin/vm_bridge.py --config /etc/safetytwin/vm-bridge.yaml --port 5678
 Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=digital-twin-bridge
+SyslogIdentifier=safetytwin-bridge
 User=root
 Group=root
-WorkingDirectory=/opt/digital-twin
+WorkingDirectory=/opt/safetytwin
 
 [Install]
 WantedBy=multi-user.target
@@ -294,44 +313,47 @@ sudo systemctl daemon-reload
 1. Przygotuj katalogi:
 
 ```bash
-sudo mkdir -p /var/lib/digital-twin/images
-sudo mkdir -p /var/lib/digital-twin/cloud-init
-sudo mkdir -p /etc/digital-twin/ssh
+sudo mkdir -p /var/lib/safetytwin/images
+sudo mkdir -p /var/lib/safetytwin/cloud-init
+sudo mkdir -p /etc/safetytwin/ssh
 ```
 
 2. Wygeneruj klucz SSH:
 
 ```bash
-sudo ssh-keygen -t rsa -b 4096 -f /etc/digital-twin/ssh/id_rsa -N "" -C "digital-twin@localhost"
+sudo ssh-keygen -t rsa -b 4096 -f /etc/safetytwin/ssh/id_rsa -N "" -C "safetytwin@localhost"
 ```
 
 3. Pobierz i przygotuj obraz bazowy:
 
 ```bash
-sudo wget -O /var/lib/digital-twin/images/ubuntu-base.img "https://cloud-images.ubuntu.com/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img"
-sudo qemu-img resize /var/lib/digital-twin/images/ubuntu-base.img 20G
-sudo cp /var/lib/digital-twin/images/ubuntu-base.img /var/lib/digital-twin/images/vm.qcow2
+sudo wget -O /var/lib/safetytwin/images/ubuntu-base.img "https://cloud-images.ubuntu.com/releases/jammy/release-20250508/ubuntu-22.04-server-cloudimg-amd64.img"
+
+# Od wersji 2025-05-11 używamy oficjalnego Ubuntu 22.04 cloud image (Jammy Jellyfish) z https://cloud-images.ubuntu.com/releases/jammy/release-20250508/
+# Cloud-init automatycznie wypisuje stan sieci i dmesg na konsolę szeregowa (ttyS0) do diagnostyki VM.
+sudo qemu-img resize /var/lib/safetytwin/images/ubuntu-base.img 20G
+sudo cp /var/lib/safetytwin/images/ubuntu-base.img /var/lib/safetytwin/images/vm.qcow2
 ```
 
 4. Przygotuj pliki cloud-init:
 
 ```bash
 # Meta-data
-sudo bash -c 'cat > /var/lib/digital-twin/cloud-init/meta-data << EOF
-instance-id: digital-twin-vm
-local-hostname: digital-twin-vm
+sudo bash -c 'cat > /var/lib/safetytwin/cloud-init/meta-data << EOF
+instance-id: safetytwin-vm
+local-hostname: safetytwin-vm
 EOF'
 
 # User-data
-sudo bash -c 'cat > /var/lib/digital-twin/cloud-init/user-data << EOF
+sudo bash -c 'cat > /var/lib/safetytwin/cloud-init/user-data << EOF
 #cloud-config
-hostname: digital-twin-vm
+hostname: safetytwin-vm
 users:
   - name: root
     lock_passwd: false
-    hashed_passwd: $(openssl passwd -6 "digital-twin-password")
+    hashed_passwd: $(openssl passwd -6 "safetytwin-password")
     ssh_authorized_keys:
-      - $(cat /etc/digital-twin/ssh/id_rsa.pub)
+      - $(cat /etc/safetytwin/ssh/id_rsa.pub)
 ssh_pwauth: true
 disable_root: false
 chpasswd:
@@ -349,16 +371,16 @@ runcmd:
 EOF'
 
 # Generuj ISO z cloud-init
-sudo genisoimage -output /var/lib/digital-twin/cloud-init/seed.iso -volid cidata -joliet -rock /var/lib/digital-twin/cloud-init/meta-data /var/lib/digital-twin/cloud-init/user-data
+sudo genisoimage -output /var/lib/safetytwin/cloud-init/seed.iso -volid cidata -joliet -rock /var/lib/safetytwin/cloud-init/meta-data /var/lib/safetytwin/cloud-init/user-data
 ```
 
 5. Zdefiniuj i uruchom maszynę wirtualną:
 
 ```bash
 # Utwórz definicję VM
-sudo bash -c 'cat > /var/lib/digital-twin/vm-definition.xml << EOF
+sudo bash -c 'cat > /var/lib/safetytwin/vm-definition.xml << EOF
 <domain type="kvm">
-  <n>digital-twin-vm</n>
+  <n>safetytwin-vm</n>
   <memory unit="KiB">4194304</memory>
   <vcpu placement="static">2</vcpu>
   <os>
@@ -375,12 +397,12 @@ sudo bash -c 'cat > /var/lib/digital-twin/vm-definition.xml << EOF
     <emulator>/usr/bin/qemu-system-x86_64</emulator>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2"/>
-      <source file="/var/lib/digital-twin/images/vm.qcow2"/>
+      <source file="/var/lib/safetytwin/images/vm.qcow2"/>
       <target dev="vda" bus="virtio"/>
     </disk>
     <disk type="file" device="cdrom">
       <driver name="qemu" type="raw"/>
-      <source file="/var/lib/digital-twin/cloud-init/seed.iso"/>
+      <source file="/var/lib/safetytwin/cloud-init/seed.iso"/>
       <target dev="sda" bus="sata"/>
       <readonly/>
     </disk>
@@ -397,8 +419,8 @@ sudo bash -c 'cat > /var/lib/digital-twin/vm-definition.xml << EOF
 EOF'
 
 # Zdefiniuj i uruchom VM
-sudo virsh define /var/lib/digital-twin/vm-definition.xml
-sudo virsh start digital-twin-vm
+sudo virsh define /var/lib/safetytwin/vm-definition.xml
+sudo virsh start safetytwin-vm
 ```
 
 6. Przygotuj plik inwentarza Ansible:
@@ -408,35 +430,35 @@ sudo virsh start digital-twin-vm
 sleep 60
 
 # Pobierz adres IP VM
-VM_IP=$(sudo virsh domifaddr digital-twin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+VM_IP=$(sudo virsh domifaddr safetytwin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
 
 # Utwórz plik inwentarza
-sudo bash -c "cat > /etc/digital-twin/inventory.yml << EOF
+sudo bash -c "cat > /etc/safetytwin/inventory.yml << EOF
 all:
   hosts:
     digital_twin:
       ansible_host: $VM_IP
       ansible_user: root
-      ansible_ssh_private_key_file: /etc/digital-twin/ssh/id_rsa
+      ansible_ssh_private_key_file: /etc/safetytwin/ssh/id_rsa
       ansible_become: yes
 EOF"
 
 # Zaktualizuj adres IP w konfiguracji agenta
-sudo sed -i "s|bridge_url:.*|bridge_url: http://$VM_IP:5678/api/v1/update_state|" /etc/digital-twin/agent-config.json
+sudo sed -i "s|bridge_url:.*|bridge_url: http://$VM_IP:5678/api/v1/update_state|" /etc/safetytwin/agent-config.json
 ```
 
 ## Konfiguracja
 
 ### Konfiguracja agenta
 
-Agent jest konfigurowany za pomocą pliku JSON, domyślnie w `/etc/digital-twin/agent-config.json`:
+Agent jest konfigurowany za pomocą pliku JSON, domyślnie w `/etc/safetytwin/agent-config.json`:
 
 ```json
 {
   "interval": 10,               // Interwał zbierania danych w sekundach
   "bridge_url": "http://VM_IP:5678/api/v1/update_state",  // URL do VM Bridge
-  "log_file": "/var/log/digital-twin/agent.log",          // Plik dziennika
-  "state_dir": "/var/lib/digital-twin/agent-states",      // Katalog na dane stanu
+  "log_file": "/var/log/safetytwin/agent.log",          // Plik dziennika
+  "state_dir": "/var/lib/safetytwin/agent-states",      // Katalog na dane stanu
   "include_processes": true,    // Czy zbierać dane o procesach
   "include_network": true,      // Czy zbierać dane o sieci
   "verbose": false              // Tryb szczegółowego logowania
@@ -445,18 +467,18 @@ Agent jest konfigurowany za pomocą pliku JSON, domyślnie w `/etc/digital-twin/
 
 ### Konfiguracja VM Bridge
 
-VM Bridge jest konfigurowany za pomocą pliku YAML, domyślnie w `/etc/digital-twin/vm-bridge.yaml`:
+VM Bridge jest konfigurowany za pomocą pliku YAML, domyślnie w `/etc/safetytwin/vm-bridge.yaml`:
 
 ```yaml
-vm_name: digital-twin-vm          # Nazwa maszyny wirtualnej
+vm_name: safetytwin-vm          # Nazwa maszyny wirtualnej
 libvirt_uri: qemu:///system       # URI do libvirt
 vm_user: root                     # Użytkownik VM
-vm_password: digital-twin-password # Hasło (opcjonalnie, lepiej użyć klucza)
-vm_key_path: /etc/digital-twin/ssh/id_rsa # Ścieżka do klucza SSH
-ansible_inventory: /etc/digital-twin/inventory.yml # Plik inwentarza Ansible
-ansible_playbook: /opt/digital-twin/apply_services.yml # Playbook Ansible
-state_dir: /var/lib/digital-twin/states # Katalog na dane stanu
-templates_dir: /etc/digital-twin/templates # Katalog szablonów
+vm_password: safetytwin-password # Hasło (opcjonalnie, lepiej użyć klucza)
+vm_key_path: /etc/safetytwin/ssh/id_rsa # Ścieżka do klucza SSH
+ansible_inventory: /etc/safetytwin/inventory.yml # Plik inwentarza Ansible
+ansible_playbook: /opt/safetytwin/apply_services.yml # Playbook Ansible
+state_dir: /var/lib/safetytwin/states # Katalog na dane stanu
+templates_dir: /etc/safetytwin/templates # Katalog szablonów
 max_snapshots: 10                 # Maksymalna liczba przechowywanych snapshotów
 ```
 
@@ -464,14 +486,14 @@ max_snapshots: 10                 # Maksymalna liczba przechowywanych snapshotó
 
 Maszyna wirtualna jest domyślnie skonfigurowana z następującymi parametrami:
 
-- Nazwa: digital-twin-vm
+- Nazwa: safetytwin-vm
 - Pamięć: 4GB RAM
 - vCPU: 2
 - Dysk: 20GB
 - System: Ubuntu 20.04
 - Użytkownik: root
-- Hasło: digital-twin-password
-- Klucz SSH: /etc/digital-twin/ssh/id_rsa
+- Hasło: safetytwin-password
+- Klucz SSH: /etc/safetytwin/ssh/id_rsa
 
 Aby zmienić te parametry, należy edytować plik definicji VM i ponownie uruchomić VM.
 
@@ -481,12 +503,12 @@ Aby uruchomić system:
 
 ```bash
 # Uruchom usługi
-sudo systemctl enable --now digital-twin-agent.service
-sudo systemctl enable --now digital-twin-bridge.service
+sudo systemctl enable --now safetytwin-agent.service
+sudo systemctl enable --now safetytwin-bridge.service
 
 # Sprawdź status
-sudo systemctl status digital-twin-agent.service
-sudo systemctl status digital-twin-bridge.service
+sudo systemctl status safetytwin-agent.service
+sudo systemctl status safetytwin-bridge.service
 ```
 
 ## Weryfikacja instalacji
@@ -502,19 +524,19 @@ sudo virsh list --all
 2. Sprawdź, czy agent wysyła dane:
 
 ```bash
-sudo tail -f /var/log/digital-twin/agent.log
+sudo tail -f /var/log/safetytwin/agent.log
 ```
 
 3. Sprawdź, czy VM Bridge odbiera dane:
 
 ```bash
-sudo journalctl -fu digital-twin-bridge
+sudo journalctl -fu safetytwin-bridge
 ```
 
 4. Sprawdź, czy API jest dostępne:
 
 ```bash
-VM_IP=$(sudo virsh domifaddr digital-twin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+VM_IP=$(sudo virsh domifaddr safetytwin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
 curl http://$VM_IP:5678/api/v1/status
 ```
 

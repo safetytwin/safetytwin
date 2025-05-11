@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"digital-twin/agent/models"
+	"safetytwin/agent/models"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -63,8 +63,8 @@ func TestSendState(t *testing.T) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			t.Errorf("Niepoprawny Content-Type: got %v, want application/json", r.Header.Get("Content-Type"))
 		}
-		if r.Header.Get("User-Agent") != "Digital-Twin-Agent/1.0" {
-			t.Errorf("Niepoprawny User-Agent: got %v, want Digital-Twin-Agent/1.0", r.Header.Get("User-Agent"))
+		if r.Header.Get("User-Agent") != "safetytwin-Agent/1.0" {
+			t.Errorf("Niepoprawny User-Agent: got %v, want safetytwin-Agent/1.0", r.Header.Get("User-Agent"))
 		}
 
 		// Odczytaj dane

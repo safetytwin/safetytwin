@@ -25,11 +25,11 @@ func TestLoadConfig(t *testing.T) {
 	if config.BridgeURL != "http://localhost:5678/api/v1/update_state" {
 		t.Errorf("Niepoprawny URL: got %v, want http://localhost:5678/api/v1/update_state", config.BridgeURL)
 	}
-	if config.LogFile != "/var/log/digital-twin-agent.log" {
-		t.Errorf("Niepoprawny plik dziennika: got %v, want /var/log/digital-twin-agent.log", config.LogFile)
+	if config.LogFile != "/var/log/safetytwin-agent.log" {
+		t.Errorf("Niepoprawny plik dziennika: got %v, want /var/log/safetytwin-agent.log", config.LogFile)
 	}
-	if config.StateDir != "/var/lib/digital-twin/states" {
-		t.Errorf("Niepoprawny katalog stanów: got %v, want /var/lib/digital-twin/states", config.StateDir)
+	if config.StateDir != "/var/lib/safetytwin/states" {
+		t.Errorf("Niepoprawny katalog stanów: got %v, want /var/lib/safetytwin/states", config.StateDir)
 	}
 	if !config.IncludeProcesses {
 		t.Errorf("Niepoprawna wartość IncludeProcesses: got %v, want true", config.IncludeProcesses)

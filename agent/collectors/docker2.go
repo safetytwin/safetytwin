@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"context"
-	"digital-twin/agent/models"
+	"safetytwin/agent/models"
 	"fmt"
 	"os/exec"
 	"strings"

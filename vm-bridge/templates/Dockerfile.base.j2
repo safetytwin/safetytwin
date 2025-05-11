@@ -3,7 +3,7 @@ FROM {{ base_image }}
 # Automatycznie wygenerowany plik bazowy dla cyfrowego bliźniaka
 # Wygenerowano: {{ timestamp }}
 
-LABEL maintainer="Digital Twin System <digital-twin@localhost>"
+LABEL maintainer="Digital Twin System <safetytwin@localhost>"
 LABEL description="Bazowy obraz dla cyfrowego bliźniaka"
 
 # Konfiguracja środowiska do symulacji sprzętu
@@ -28,18 +28,18 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Utwórz katalog na aplikacje
-RUN mkdir -p /opt/digital-twin
+RUN mkdir -p /opt/safetytwin
 
 # Utwórz katalog na dane
-VOLUME /var/lib/digital-twin
+VOLUME /var/lib/safetytwin
 
 # Ustaw katalog roboczy
-WORKDIR /opt/digital-twin
+WORKDIR /opt/safetytwin
 
 # Utwórz plik informacyjny o systemie
-RUN echo "Digital Twin System" > /etc/digital-twin-version
-RUN echo "Created: {{ timestamp }}" >> /etc/digital-twin-version
-RUN echo "Base Image: {{ base_image }}" >> /etc/digital-twin-version
+RUN echo "Digital Twin System" > /etc/safetytwin-version
+RUN echo "Created: {{ timestamp }}" >> /etc/safetytwin-version
+RUN echo "Base Image: {{ base_image }}" >> /etc/safetytwin-version
 
 # Domyślna komenda
 CMD ["bash"]

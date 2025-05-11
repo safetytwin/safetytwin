@@ -246,11 +246,11 @@ def main():
     
     # Parsowanie argumentów wiersza poleceń
     parser = argparse.ArgumentParser(description='VM Bridge - Most między systemem monitorującym a wirtualną maszyną')
-    parser.add_argument('--config', type=str, default='/etc/digital-twin/vm-bridge.yaml', 
+    parser.add_argument('--config', type=str, default='/etc/safetytwin/vm-bridge.yaml', 
                         help='Ścieżka do pliku konfiguracyjnego')
     parser.add_argument('--port', type=int, default=5678, 
                         help='Port na którym uruchomić API')
-    parser.add_argument('--log', type=str, default='/var/log/digital-twin/vm-bridge.log',
+    parser.add_argument('--log', type=str, default='/var/log/safetytwin/vm-bridge.log',
                         help='Ścieżka do pliku logów')
     parser.add_argument('--verbose', action='store_true',
                         help='Tryb gadatliwy (więcej logów)')

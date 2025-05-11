@@ -44,7 +44,7 @@ lub
 pip install -r requirements.txt
 ```
 
-2. Utwórz plik konfiguracyjny `/etc/digital-twin/vm-bridge.yaml` z przykładową zawartością:
+2. Utwórz plik konfiguracyjny `/etc/safetytwin/vm-bridge.yaml` z przykładową zawartością:
 
 ```yaml
 libvirt_uri: "qemu:///system"
@@ -62,18 +62,18 @@ bridge_url: "http://localhost:5678/api/v1/update_state"
 Aby uruchomić API VM Bridge, wykonaj:
 
 ```bash
-python main.py --config /etc/digital-twin/vm-bridge.yaml --port 5678 --log /tmp/vm-bridge.log --verbose
+python main.py --config /etc/safetytwin/vm-bridge.yaml --port 5678 --log /tmp/vm-bridge.log --verbose
 ```
 
 Parametry:
-- `--config`: Ścieżka do pliku konfiguracyjnego (domyślnie: `/etc/digital-twin/vm-bridge.yaml`)
+- `--config`: Ścieżka do pliku konfiguracyjnego (domyślnie: `/etc/safetytwin/vm-bridge.yaml`)
 - `--port`: Port nasłuchiwania (domyślnie: 5678)
-- `--log`: Ścieżka do pliku logów (domyślnie: `/var/log/digital-twin/vm-bridge.log`)
+- `--log`: Ścieżka do pliku logów (domyślnie: `/var/log/safetytwin/vm-bridge.log`)
 - `--verbose`: Szczegółowe logowanie
 
 - `--host`: Host do nasłuchiwania (domyślnie: 0.0.0.0)
 - `--port`: Port do nasłuchiwania (domyślnie: 5678)
-- `--vm-name`: Nazwa maszyny wirtualnej (domyślnie: digital-twin)
+- `--vm-name`: Nazwa maszyny wirtualnej (domyślnie: safetytwin)
 - `--config`: Ścieżka do pliku konfiguracyjnego (domyślnie: /etc/vm-bridge.yaml)
 - `--debug`: Uruchom w trybie debug
 - `--log-level`: Poziom logowania (debug, info, warning, error, critical)
@@ -179,7 +179,7 @@ Przykładowa odpowiedź:
 ```json
 {
   "status": "ok",
-  "vm_name": "digital-twin",
+  "vm_name": "safetytwin",
   "vm_ip": "192.168.122.100",
   "vm_running": true,
   "current_snapshot": "state_20230501_120000",

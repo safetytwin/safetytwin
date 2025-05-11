@@ -562,7 +562,7 @@ def run_vm_bridge_service(config_path="/etc/vm-bridge.yaml"):
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
             
-        vm_name = config.get('vm_name', 'digital-twin')
+        vm_name = config.get('vm_name', 'safetytwin')
         
         # Utwórz instancję VMBridge
         bridge = VMBridge(vm_name, config_path)

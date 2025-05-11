@@ -34,7 +34,7 @@ Tak, system może być uruchomiony w chmurze, pod warunkiem że dostawca chmury 
 
 ### Jak zmienić interwał aktualizacji?
 
-Interwał aktualizacji można zmienić w pliku konfiguracyjnym agenta (`/etc/digital-twin/agent-config.json`), edytując wartość parametru `interval`:
+Interwał aktualizacji można zmienić w pliku konfiguracyjnym agenta (`/etc/safetytwin/agent-config.json`), edytując wartość parametru `interval`:
 
 ```json
 {
@@ -46,7 +46,7 @@ Interwał aktualizacji można zmienić w pliku konfiguracyjnym agenta (`/etc/dig
 Po zmianie konfiguracji należy zrestartować usługę agenta:
 
 ```bash
-sudo systemctl restart digital-twin-agent.service
+sudo systemctl restart safetytwin-agent.service
 ```
 
 ## Użytkowanie i funkcje
@@ -57,12 +57,12 @@ Dostęp do maszyny wirtualnej cyfrowego bliźniaka można uzyskać na kilka spos
 
 1. Przez SSH:
 ```bash
-ssh -i /etc/digital-twin/ssh/id_rsa root@VM_IP
+ssh -i /etc/safetytwin/ssh/id_rsa root@VM_IP
 ```
 
 2. Przez konsolę VNC, używając polecenia:
 ```bash
-virt-viewer digital-twin-vm
+virt-viewer safetytwin-vm
 ```
 
 3. Przez API REST, dostępne pod adresem:
@@ -85,7 +85,7 @@ curl -X POST http://VM_IP:5678/api/v1/snapshots/state_1620123456
 Lub użyć interfejsu libvirt:
 
 ```bash
-sudo virsh snapshot-revert digital-twin-vm state_1620123456
+sudo virsh snapshot-revert safetytwin-vm state_1620123456
 ```
 
 ### Czy system obsługuje kontenery Docker?
@@ -102,51 +102,51 @@ Tak, system ma specjalne wsparcie dla wykrywania i monitorowania procesów zwią
 
 1. Sprawdź, czy adres IP VM w konfiguracji agenta jest poprawny:
 ```bash
-cat /etc/digital-twin/agent-config.json
+cat /etc/safetytwin/agent-config.json
 ```
 
 2. Sprawdź, czy VM Bridge działa na maszynie wirtualnej:
 ```bash
-ssh -i /etc/digital-twin/ssh/id_rsa root@VM_IP "systemctl status digital-twin-bridge"
+ssh -i /etc/safetytwin/ssh/id_rsa root@VM_IP "systemctl status safetytwin-bridge"
 ```
 
 3. Sprawdź, czy port jest otwarty na maszynie wirtualnej:
 ```bash
-ssh -i /etc/digital-twin/ssh/id_rsa root@VM_IP "netstat -tulpn | grep 5678"
+ssh -i /etc/safetytwin/ssh/id_rsa root@VM_IP "netstat -tulpn | grep 5678"
 ```
 
 ### Maszyna wirtualna nie uruchamia się
 
 1. Sprawdź status VM:
 ```bash
-sudo virsh dominfo digital-twin-vm
+sudo virsh dominfo safetytwin-vm
 ```
 
 2. Sprawdź logi KVM:
 ```bash
-sudo tail -f /var/log/libvirt/qemu/digital-twin-vm.log
+sudo tail -f /var/log/libvirt/qemu/safetytwin-vm.log
 ```
 
 3. Spróbuj uruchomić VM ręcznie:
 ```bash
-sudo virsh start digital-twin-vm
+sudo virsh start safetytwin-vm
 ```
 
 ### VM Bridge nie aktualizuje stanu VM
 
 1. Sprawdź logi VM Bridge:
 ```bash
-ssh -i /etc/digital-twin/ssh/id_rsa root@VM_IP "journalctl -fu digital-twin-bridge"
+ssh -i /etc/safetytwin/ssh/id_rsa root@VM_IP "journalctl -fu safetytwin-bridge"
 ```
 
 2. Sprawdź, czy Ansible działa poprawnie:
 ```bash
-sudo ansible -i /etc/digital-twin/inventory.yml all -m ping
+sudo ansible -i /etc/safetytwin/inventory.yml all -m ping
 ```
 
 3. Sprawdź, czy VM Bridge otrzymuje dane od agenta:
 ```bash
-ssh -i /etc/digital-twin/ssh/id_rsa root@VM_IP "tail -f /var/log/digital-twin/vm-bridge.log"
+ssh -i /etc/safetytwin/ssh/id_rsa root@VM_IP "tail -f /var/log/safetytwin/vm-bridge.log"
 ```
 
 ## Bezpieczeństwo i wydajność
@@ -169,16 +169,16 @@ Tak, można zmienić ilość pamięci i liczbę vCPU przydzielonych do maszyny w
 
 ```bash
 # Zmiana ilości pamięci
-sudo virsh setmaxmem digital-twin-vm 8G --config
-sudo virsh setmem digital-twin-vm 8G --config
+sudo virsh setmaxmem safetytwin-vm 8G --config
+sudo virsh setmem safetytwin-vm 8G --config
 
 # Zmiana liczby vCPU
-sudo virsh setvcpus digital-twin-vm 4 --config --maximum
-sudo virsh setvcpus digital-twin-vm 4 --config
+sudo virsh setvcpus safetytwin-vm 4 --config --maximum
+sudo virsh setvcpus safetytwin-vm 4 --config
 
 # Restart VM
-sudo virsh shutdown digital-twin-vm
-sudo virsh start digital-twin-vm
+sudo virsh shutdown safetytwin-vm
+sudo virsh start safetytwin-vm
 ```
 
 ## Inne
@@ -203,11 +203,11 @@ Obecnie system jest zaprojektowany do pracy z libvirt/KVM, ale teoretycznie móg
 ### Jak zgłosić błąd lub zaproponować nową funkcję?
 
 Błędy i propozycje nowych funkcji można zgłaszać na GitHub w zakładce Issues:
-https://github.com/digital-twin-system/digital-twin/issues
+https://github.com/safetytwin/safetytwin/issues
 
 ### Gdzie mogę znaleźć więcej informacji?
 
 - Dokumentacja projektu znajduje się w katalogu `docs/`
 - Kod źródłowy z komentarzami
-- [Strona projektu](https://github.com/digital-twin-system/digital-twin)
+- [Strona projektu](https://github.com/safetytwin/safetytwin)
 - [API dokumentacja](docs/API.md)

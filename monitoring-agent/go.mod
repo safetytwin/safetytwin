@@ -1,4 +1,4 @@
-module digital-twin/agent
+module safetytwin/agent
 
 go 1.20
 
