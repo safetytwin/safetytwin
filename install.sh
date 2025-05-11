@@ -98,19 +98,14 @@ ensure_cloud_image() {
   IMG_DIR="/var/lib/safetytwin/images"
   BASE_IMG="$IMG_DIR/ubuntu-base.img"
   CLOUDIMG_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-  # You can switch to focal (20.04) if needed
 
   mkdir -p "$IMG_DIR"
   if [ ! -f "$BASE_IMG" ]; then
     log_warning "Brak obrazu Ubuntu cloudimg. Pobieram oficjalny obraz cloud-init..."
     wget -O "$BASE_IMG" "$CLOUDIMG_URL"
   else
-    # Check if file is a cloudimg (quick check)
-    if ! qemu-img info "$BASE_IMG" | grep -q "cloudimg"; then
-      log_warning "Obraz VM nie wygląda na oficjalny cloudimg. Pobieram poprawny obraz..."
-      mv "$BASE_IMG" "$BASE_IMG.bak.$(date +%s)"
-      wget -O "$BASE_IMG" "$CLOUDIMG_URL"
-    fi
+    log_success "Obraz Ubuntu cloudimg już istnieje: $BASE_IMG"
+    log "Jeśli chcesz wymusić pobranie nowego obrazu, usuń ten plik ręcznie."
   fi
   log "Używany obraz VM: $BASE_IMG"
 }
@@ -940,8 +935,7 @@ start_services() {
   systemctl daemon-reload
 
   # Włącz i uruchom usługi
-  systemctl enable safetytwin-agent.service
-  systemctl start safetytwin-agent.service
+  bash "$(dirname "$0")/scripts/project_services_control.sh" restart
 
   log_success "Usługi uruchomione pomyślnie."
 

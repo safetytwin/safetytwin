@@ -85,12 +85,44 @@ class StateStore:
             with open(latest_file, 'w') as f:
                 json.dump(state_data, f, indent=2)
 
+            # Usuwanie plików starszych niż 1h i trzymanie tylko 10 najnowszych
+            self._cleanup_old_states(max_count=10, max_age_sec=3600)
+
             logger.info(f"Zapisano stan systemu: {state_id}")
             return state_id
 
         except Exception as e:
             logger.error(f"Błąd podczas zapisywania stanu: {e}")
             return None
+
+    def _cleanup_old_states(self, max_count=10, max_age_sec=3600):
+        """Usuwa pliki stanu starsze niż max_age_sec lub powyżej max_count najnowszych."""
+        state_files = []
+        now = time.time()
+        for file in os.listdir(self.state_dir):
+            if file.startswith("state_") and file.endswith(".json") and file != "state_latest.json":
+                path = os.path.join(self.state_dir, file)
+                mtime = os.path.getmtime(path)
+                state_files.append((file, mtime, path))
+        # Sortuj od najnowszych
+        state_files.sort(key=lambda x: x[1], reverse=True)
+        # Zostaw tylko max_count najnowszych
+        keep = state_files[:max_count]
+        to_delete = state_files[max_count:]
+        # Usuń pliki starsze niż 1h lub przekraczające limit
+        for file, mtime, path in to_delete:
+            try:
+                os.remove(path)
+                logger.info(f"Usunięto stary plik stanu (limit): {file}")
+            except Exception as e:
+                logger.warning(f"Nie można usunąć pliku {file}: {e}")
+        for file, mtime, path in keep:
+            if now - mtime > max_age_sec:
+                try:
+                    os.remove(path)
+                    logger.info(f"Usunięto stary plik stanu (wiek): {file}")
+                except Exception as e:
+                    logger.warning(f"Nie można usunąć pliku {file}: {e}")
 
     def get_state(self, state_id):
         """Pobiera stan o podanym ID."""
@@ -119,7 +151,7 @@ class StateStore:
             return False, {}
 
     def get_state_history(self, limit=10):
-        """Zwraca historię stanów."""
+        """Zwraca historię max 10 najnowszych stanów (starsze są usuwane)."""
         state_files = []
 
         # Znajdź pliki stanów w katalogu
@@ -131,8 +163,8 @@ class StateStore:
         # Posortuj pliki według czasu modyfikacji (od najnowszych)
         state_files.sort(key=lambda x: x[1], reverse=True)
 
-        # Ogranicz liczbę plików
-        state_files = state_files[:limit]
+        # Ogranicz liczbę plików do 10 najnowszych
+        state_files = state_files[:10]
 
         history = []
         for file, mtime in state_files:

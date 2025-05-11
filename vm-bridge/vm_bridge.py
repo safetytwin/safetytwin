@@ -88,43 +88,72 @@ class VMBridge:
             self.state_dir = '/var/lib/vm-bridge/states'
             
     def create_snapshot(self, name=None):
-        """Tworzy nowy snapshot VM"""
+        """Tworzy nowy snapshot VM i zarządza limitami czasowymi oraz ilościowymi."""
         if self.domain is None:
             logger.error("Nie można utworzyć snapshotu - VM nie istnieje")
             return None
-            
         try:
             # Wygeneruj nazwę snapshotu, jeśli nie podano
             if name is None:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 name = f"state_{timestamp}"
-                
+
             # XML dla snapshotu
             snapshot_xml = f"""
             <domainsnapshot>
                 <name>{name}</name>
-                <description>Snapshot utworzony przez VM Bridge o {datetime.now().isoformat()}</description>
-                <memory snapshot='internal'/>
             </domainsnapshot>
             """
-            
             # Utwórz snapshot
-            snapshot = self.domain.snapshotCreateXML(snapshot_xml, 0)
+            self.domain.snapshotCreateXML(snapshot_xml, 0)
             logger.info(f"Utworzono snapshot: {name}")
-            
-            # Dodaj do historii snapshotów
             self.snapshot_history.append(name)
-            
-            # Ogranicz liczbę snapshotów
-            while len(self.snapshot_history) > self.max_snapshots:
-                oldest = self.snapshot_history.pop(0)
+
+            # --- NOWA LOGIKA: usuwanie snapshotów starszych niż 1h oraz limit 10 najnowszych ---
+            import xml.etree.ElementTree as ET
+            now = datetime.now().timestamp()  # Aktualny czas lokalny
+            keep_snapshots = []
+            for snap_name in list(self.snapshot_history):
                 try:
-                    old_snapshot = self.domain.snapshotLookupByName(oldest)
-                    old_snapshot.delete()
-                    logger.info(f"Usunięto stary snapshot: {oldest}")
-                except libvirt.libvirtError as e:
-                    logger.warning(f"Nie można usunąć snapshotu {oldest}: {e}")
-                    
+                    snap = self.domain.snapshotLookupByName(snap_name)
+                    xml = snap.getXMLDesc()
+                    root = ET.fromstring(xml)
+                    # Spróbuj znaleźć znacznik creationTime w metadanych
+                    creation_time = None
+                    for meta in root.findall("metadata"):
+                        for elem in meta:
+                            if elem.tag.endswith("creationTime"):
+                                try:
+                                    creation_time = int(elem.text)
+                                except Exception:
+                                    pass
+                    # Jeśli nie ma creationTime, użyj czasu utworzenia pliku snapshotu (jeśli dostępny)
+                    if not creation_time:
+                        creation_time = now  # fallback: snapshot właśnie utworzony
+                    age = now - creation_time
+                    if age > 3600:
+                        snap.delete()
+                        self.snapshot_history.remove(snap_name)
+                        logger.info(f"Usunięto snapshot starszy niż 1h: {snap_name}")
+                    else:
+                        keep_snapshots.append((snap_name, creation_time))
+                except Exception as e:
+                    logger.warning(f"Nie można sprawdzić/usunąć snapshotu {snap_name}: {e}")
+
+            # Zachowaj tylko 10 najnowszych snapshotów (wg creation_time)
+            keep_snapshots.sort(key=lambda x: x[1], reverse=True)
+            for snap_name, _ in keep_snapshots[10:]:
+                try:
+                    snap = self.domain.snapshotLookupByName(snap_name)
+                    snap.delete()
+                    self.snapshot_history.remove(snap_name)
+                    logger.info(f"Usunięto snapshot przekraczający limit 10: {snap_name}")
+                except Exception as e:
+                    logger.warning(f"Nie można usunąć snapshotu {snap_name}: {e}")
+
+            # Odśwież listę snapshotów
+            self.snapshot_history = [name for name, _ in keep_snapshots[:10] if name in self.snapshot_history]
+
             return name
         except libvirt.libvirtError as e:
             logger.error(f"Błąd podczas tworzenia snapshotu: {e}")

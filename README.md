@@ -67,6 +67,29 @@ Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w cz
 - `preinstall.sh` – Minimal VM/cloud-init provisioning and troubleshooting tool.
 - `diagnostics.sh` – Runs inside the VM to check system configuration, health, and compliance.
 - `diagnostics_download.sh` – Orchestrates copying and running diagnostics.sh on the VM and downloads the resulting log to the host.
+- `scripts/project_services_control.sh` – Zarządzanie wszystkimi usługami projektu (stop, restart).
+
+### Zarządzanie usługami projektu
+
+Aby zatrzymać lub zrestartować wszystkie usługi powiązane z projektem SafetyTwin, użyj skryptu:
+
+```bash
+# Z katalogu głównego repozytorium:
+bash safetytwin/scripts/project_services_control.sh stop
+bash safetytwin/scripts/project_services_control.sh restart
+
+# Lub z katalogu safetytwin/safetytwin:
+bash scripts/project_services_control.sh stop
+bash scripts/project_services_control.sh restart
+```
+
+**Uwaga:**
+- Jeśli pojawia się błąd `No such file or directory`, upewnij się, że wywołujesz skrypt z odpowiedniego katalogu lub podajesz poprawną ścieżkę.
+- Skrypt obsługuje usługi: `agent_send_state`, `orchestrator`, `snapshot-backup`.
+- Przed pierwszym użyciem możesz nadać prawa do uruchamiania:
+  ```bash
+  chmod +x safetytwin/scripts/project_services_control.sh
+  ```
 
 ### Step-by-step Workflow
 1. **Provision the VM:**
