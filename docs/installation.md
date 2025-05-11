@@ -1,3 +1,22 @@
+---
+
+## 📚 Menu nawigacyjne
+
+- [README (Start)](../README.md)
+- [Instrukcja instalacji](../INSTALL.md)
+- [Stan instalatora](../INSTALL_STATE.md)
+- [Wynik instalacji](../INSTALL_RESULT.yaml)
+- [FAQ](faq.md)
+- [Rozwiązywanie problemów](troubleshooting.md)
+- [Przegląd architektury](overview.md)
+- [Agent](agent.md)
+- [VM Bridge](vm-bridge.md)
+- [Ansible](ansible.md)
+- [API](api.md)
+- [Strategia](../STRATEGIA.md)
+
+---
+
 # Szczegółowa instrukcja instalacji
 
 Ten dokument zawiera szczegółowe informacje na temat instalacji i konfiguracji systemu cyfrowego bliźniaka.
@@ -43,6 +62,13 @@ Ten dokument zawiera szczegółowe informacje na temat instalacji i konfiguracji
 - Docker (opcjonalnie)
 
 ## Szybka instalacja
+
+Po instalacji lub w razie problemów z siecią VM uruchom `sudo bash repair.sh`.
+Skrypt automatycznie:
+- Zamyka aktywną sesję konsoli VM (jeśli istnieje),
+- Diagnozuje i naprawia najczęstsze problemy z siecią oraz cloud-init,
+- Zbiera logi i konfiguracje z VM do pliku `/var/lib/safetytwin/TWIN.yaml`.
+- W przypadku błędów generuje instrukcje ręczne dla użytkownika.
 
 Najszybszym sposobem na instalację systemu jest użycie dostarczonego skryptu instalacyjnego:
 

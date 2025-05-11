@@ -1,5 +1,26 @@
 # [safetytwin](safetytwin.com) - System Cyfrowego Bliźniaka w Czasie Rzeczywistym
 
+---
+
+## 📚 Menu nawigacyjne
+
+- [README (Start)](README.md)
+- [Instrukcja instalacji](INSTALL.md)
+- [Szczegółowa instalacja](docs/installation.md)
+- [Stan instalatora](INSTALL_STATE.md)
+- [Wynik instalacji](INSTALL_RESULT.yaml)
+- [FAQ](docs/faq.md)
+- [Rozwiązywanie problemów](docs/troubleshooting.md)
+- [Przegląd architektury](docs/overview.md)
+- [Agent](docs/agent.md)
+- [VM Bridge](docs/vm-bridge.md)
+- [Ansible](docs/ansible.md)
+- [API](docs/api.md)
+- [Strategia](STRATEGIA.md)
+
+---
+
+
 Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w czasie rzeczywistym, z częstotliwością co 10 sekund. System koncentruje się na usługach działających w tle i umożliwia natychmiastowe odtworzenie stanu systemu w wirtualnym środowisku.
 
 1. **Libvirt/QEMU/KVM** - do tworzenia wirtualnej maszyny będącej bliźniakiem
@@ -11,6 +32,11 @@ Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w cz
 Rozwiązanie to pozwoli na znacznie szybsze aktualizacje niż pełne przebudowanie kontenerów Docker, a jednocześnie zapewni wierniejsze odwzorowanie rzeczywistego systemu.
 
 ## Architektura systemu
+
+**Nowość (2025-05):**
+- Skrypt `repair.sh` automatycznie diagnozuje i naprawia sieć VM po instalacji, zbiera szczegółowe logi diagnostyczne do pliku `/var/lib/safetytwin/TWIN.yaml` oraz automatycznie zamyka aktywne sesje konsoli VM, aby umożliwić zbieranie danych.
+- W przypadku braku możliwości zebrania diagnostyki, skrypt generuje jasne instrukcje ręczne dla użytkownika.
+
 
 ```
 ┌─────────────────────────┐     ┌─────────────────────────┐

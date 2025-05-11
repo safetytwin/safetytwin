@@ -45,10 +45,34 @@ log_error() {
 
 # Sprawdzenie uprawnień
 check_root() {
+  ensure_cloud_image
+
   if [ "$(id -u)" -ne 0 ]; then
     log_error "Ten skrypt musi być uruchomiony jako root."
     exit 1
   fi
+}
+
+# --- Ensure correct Ubuntu cloud image is present ---
+ensure_cloud_image() {
+  IMG_DIR="/var/lib/safetytwin/images"
+  BASE_IMG="$IMG_DIR/ubuntu-base.img"
+  CLOUDIMG_URL="https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+  # You can switch to focal (20.04) if needed
+
+  mkdir -p "$IMG_DIR"
+  if [ ! -f "$BASE_IMG" ]; then
+    log_warning "Brak obrazu Ubuntu cloudimg. Pobieram oficjalny obraz cloud-init..."
+    wget -O "$BASE_IMG" "$CLOUDIMG_URL"
+  else
+    # Check if file is a cloudimg (quick check)
+    if ! qemu-img info "$BASE_IMG" | grep -q "cloudimg"; then
+      log_warning "Obraz VM nie wygląda na oficjalny cloudimg. Pobieram poprawny obraz..."
+      mv "$BASE_IMG" "$BASE_IMG.bak.$(date +%s)"
+      wget -O "$BASE_IMG" "$CLOUDIMG_URL"
+    fi
+  fi
+  log "Używany obraz VM: $BASE_IMG"
 }
 
 # Sprawdzenie wymagań systemowych i instalacja zależności
@@ -67,19 +91,42 @@ check_requirements() {
   # Instalacja narzędzi wymaganych przez skrypty diagnostyczne i narzędziowe
   case "$DISTRO" in
     ubuntu|debian)
-      log_info "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
+      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
       sudo apt-get update
-      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep awk
-      # Napraw uprawnienia do katalogu cloud-init
-      if [ -d /var/lib/safetytwin/cloud-init ]; then
-        sudo chown -R root:root /var/lib/safetytwin/cloud-init
-        sudo chmod 700 /var/lib/safetytwin/cloud-init
-      fi
+      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep gawk
+      ;;
+    centos|rhel|fedora)
+      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute, cloud-utils, expect, lsof, jq, sed, grep, awk..."
+      yum install -y whois sudo net-tools iproute cloud-utils expect lsof jq sed grep awk
+      ;;
+    arch)
+      log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk..."
+      pacman -Syu --noconfirm whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep awk
       ;;
     *)
-      log_warn "Nieznana dystrybucja: $DISTRO. Zainstaluj ręcznie: whois net-tools iproute2 cloud-utils expect lsof jq"
+      log_warning "Nieznana dystrybucja: $DISTRO. Upewnij się, że wymagane narzędzia są zainstalowane."
       ;;
   esac
+
+  # Sprawdź i zainstaluj virt-install jeśli brak
+  if ! command -v virt-install >/dev/null 2>&1; then
+    case "$DISTRO" in
+      ubuntu|debian)
+        log_warning "virt-install nie znaleziony. Instaluję pakiet virtinst..."
+        sudo apt-get update
+        sudo apt-get install -y virtinst
+        ;;
+      centos|rhel|fedora)
+        log_warning "virt-install nie znaleziony. Zainstaluj pakiet virt-install lub virt-manager dla swojej dystrybucji."
+        ;;
+      arch)
+        log_warning "virt-install nie znaleziony. Zainstaluj pakiet virt-manager dla swojej dystrybucji."
+        ;;
+      *)
+        log_warning "virt-install nie znaleziony. Zainstaluj ręcznie pakiet virt-install/virtinst."
+        ;;
+    esac
+  fi
 
   # Ustal menedżer pakietów i pakiety
   PKG_UPDATE=""
@@ -633,19 +680,23 @@ install_vm_bridge_on_vm() {
   virsh net-info default || true
   cat /var/lib/libvirt/dnsmasq/default.leases || true
   if ! virsh domiflist safetytwin-vm | grep -q default; then
-    log_info "[AUTO-FIX] VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
+    log "[AUTO-FIX] VM nie jest podłączona do sieci 'default'. Próbuję naprawić..."
     virsh detach-interface safetytwin-vm --type network --mac $(virsh domiflist safetytwin-vm | awk '/network/ {print $5}') --persistent || true
     virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
-    log_info "[AUTO-FIX] Podłączono VM do sieci 'default'."
+    log "[AUTO-FIX] Podłączono VM do sieci 'default'."
   fi
   if ! virsh net-info default | grep -q 'Active: yes'; then
-    log_info "[AUTO-FIX] Sieć 'default' nieaktywna. Próbuję uruchomić..."
-    virsh net-start default
+    log "[AUTO-FIX] Sieć 'default' nieaktywna. Próbuję uruchomić..."
+    if virsh net-start default 2>&1 | grep -q 'network is already active'; then
+      log "Sieć 'default' już aktywna — pomijam restart."
+    else
+      virsh net-start default
+    fi
     virsh net-autostart default
   fi
   # Upewnij się, że user-data ma sekcję network
   if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
-    log_info "[AUTO-FIX] Dodaję domyślną konfigurację sieci do user-data."
+    log "[AUTO-FIX] Dodaję domyślną konfigurację sieci do user-data."
     echo -e '\nnetwork:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true' >> /var/lib/safetytwin/cloud-init/user-data
   fi
   # Po naprawie próbuj ponownie uzyskać IP
@@ -656,7 +707,7 @@ install_vm_bridge_on_vm() {
     # Wyświetl skrócone instrukcje ręczne
     echo "Ręczna diagnostyka:\n  sudo virsh domiflist safetytwin-vm\n  sudo virsh net-list --all\n  sudo virsh net-info default\n  sudo cat /var/lib/libvirt/dnsmasq/default.leases\n  sudo virsh console safetytwin-vm\n  sudo cat /var/lib/safetytwin/cloud-init/user-data"
   else
-    log_info "[AUTO-FIX] VM ma adres IP: $IP_VM"
+    log "[AUTO-FIX] VM ma adres IP: $IP_VM"
   fi
 
   VM_IP=$(virsh domifaddr "$DEFAULT_VM_NAME" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
@@ -888,7 +939,31 @@ main() {
   log "Rozpoczynanie instalacji systemu cyfrowego bliźniaka..."
 
   check_root
+
+  # --- AUTOMATYCZNE VENV ---
+  VENV_DIR=".venv"
+  if [ ! -d "$VENV_DIR" ]; then
+    log "Tworzę środowisko Python venv w $VENV_DIR..."
+    python3 -m venv "$VENV_DIR"
+    log_success "Utworzono venv."
+  else
+    log "Środowisko venv już istnieje."
+  fi
+  # Aktywuj venv
+  # shellcheck disable=SC1091
+  source "$VENV_DIR/bin/activate"
+  log_success "Aktywowano środowisko venv ($VENV_DIR). Wszystkie zależności pip zostaną zainstalowane lokalnie."
+  # Używaj pip z venv
+  PIP="$VENV_DIR/bin/pip"
+
   check_requirements
+
+  # Instalacja ansible i deepdiff do venv
+  log "Instalacja deepdiff i ansible przez pip (w venv)..."
+  $PIP install --upgrade pip
+  $PIP install deepdiff ansible
+
+  install_ansible
   create_directories
   define_cron_monitor
   install_safetytwin_cli
@@ -901,7 +976,26 @@ main() {
   show_summary
 
   log_success "Instalacja zakończona pomyślnie!"
+
+  # --- DIAGNOSTYKA I AUTO-NAPRAWA ---
+  if [ -f "INSTALL_RESULT.yaml" ]; then
+    log "[AUTO-DIAG] Rozpoczynam automatyczną diagnostykę i naprawę systemu po instalacji..."
+    if [ -f "repair.sh" ]; then
+      bash repair.sh INSTALL_RESULT.yaml | tee -a install.log
+    else
+      log_warning "Brak repair.sh — pomijam auto-naprawę."
+    fi
+    if [ -f "diagnose-vm-network.sh" ]; then
+      bash diagnose-vm-network.sh | tee -a install.log
+    else
+      log_warning "Brak diagnose-vm-network.sh — pomijam diagnostykę VM."
+    fi
+    log_success "Diagnostyka i naprawa po instalacji zakończona. Sprawdź INSTALL_RESULT.yaml oraz install.log."
+  else
+    log_warning "Brak INSTALL_RESULT.yaml — pomijam auto-diagnostykę."
+  fi
 }
+
 
 # Uruchom główną funkcję
   # Automatyczne naprawy przed główną instalacją

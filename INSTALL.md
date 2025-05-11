@@ -1,3 +1,22 @@
+---
+
+## 📚 Menu nawigacyjne
+
+- [README (Start)](README.md)
+- [Instrukcja instalacji](INSTALL.md)
+- [Stan instalatora](INSTALL_STATE.md)
+- [Wynik instalacji](INSTALL_RESULT.yaml)
+- [FAQ](docs/faq.md)
+- [Rozwiązywanie problemów](docs/troubleshooting.md)
+- [Przegląd architektury](docs/overview.md)
+- [Agent](docs/agent.md)
+- [VM Bridge](docs/vm-bridge.md)
+- [Ansible](docs/ansible.md)
+- [API](docs/api.md)
+- [Strategia](STRATEGIA.md)
+
+---
+
 # Instrukcja instalacji i uruchomienia safetytwin
 
 ## Spis treści
@@ -20,12 +39,20 @@
    git clone <repo-url>
    cd safetytwin/safetytwin
    ```
-2. **Uruchom instalator jako root:**
+2. **Automatyczne środowisko Python venv:**
+   Instalator sam utworzy środowisko wirtualne Pythona (`.venv`) w katalogu projektu i zainstaluje zależności pip do venv (nie globalnie). Jeśli środowisko już istnieje, zostanie użyte ponownie.
+   
+   Po instalacji możesz aktywować środowisko:
+   ```bash
+   source .venv/bin/activate
+   ```
+   
+   Lub uruchomić instalator:
    ```bash
    sudo bash install.sh
    ```
    Skrypt wykona automatycznie:
-   - Instalację zależności systemowych i pythonowych
+   - Instalację zależności systemowych i pythonowych (w .venv)
    - Konfigurację usług (libvirt, qemu, safetytwin bridge)
    - Utworzenie katalogów i kluczy SSH
    - Instalację CLI `safetytwin`
@@ -67,7 +94,16 @@ safetytwin what           # Ostatnie akcje z logów
 
 ---
 
-## Automatyczna samonaprawa przez instalator
+## Automatyczna samonaprawa i diagnostyka VM
+
+Instalator oraz skrypt `repair.sh` wyposażone są w mechanizmy samonaprawcze i diagnostyczne:
+
+- Automatycznie diagnozują i naprawiają najczęstsze problemy z siecią VM (libvirt, cloud-init, DHCP).
+- Skrypt `repair.sh` zamyka aktywne sesje konsoli VM przed próbą zebrania diagnostyki.
+- Zbiera szczegółowe logi i konfiguracje z VM do pliku `/var/lib/safetytwin/TWIN.yaml`.
+- Jeśli automatyczna diagnostyka się nie powiedzie, generuje jasne instrukcje ręczne dla użytkownika.
+
+Po każdej instalacji oraz naprawie generowany jest plik `INSTALL_RESULT.yaml` oraz (przy diagnostyce VM) `TWIN.yaml` z aktualnym stanem systemu i zaleceniami naprawczymi.
 
 Instalator safetytwin został wyposażony w mechanizmy samonaprawcze. Jeśli wykryje typowe problemy (np. brak katalogów, nieaktywne usługi, brak CLI, brak obrazu VM, brak zadania w cronie, błędne uprawnienia), automatycznie podejmie próbę ich naprawy:
 
@@ -87,6 +123,10 @@ Po każdej instalacji generowany jest plik `INSTALL_RESULT.yaml`, który zawiera
 - Sprawdź plik `INSTALL_RESULT.yaml` po instalacji, aby zobaczyć szczegółowy raport.
 
 ## Troubleshooting
+
+### Nowość: plik diagnostyczny TWIN.yaml
+
+Jeśli napotkasz problemy z siecią lub uruchomieniem VM, uruchom `sudo bash repair.sh`. Skrypt wygeneruje plik `/var/lib/safetytwin/TWIN.yaml` ze szczegółową diagnostyką VM. Jeśli pojawią się sekcje oznaczone `[BŁĄD]`, postępuj zgodnie z instrukcjami w pliku lub zgłoś problem wraz z jego zawartością do wsparcia.
 
 Jeśli napotkasz problemy podczas instalacji lub działania safetytwin, sprawdź poniższe punkty:
 

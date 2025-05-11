@@ -1,4 +1,29 @@
+---
+
+## 📚 Menu nawigacyjne
+
+- [README (Start)](../README.md)
+- [Instrukcja instalacji](../INSTALL.md)
+- [Stan instalatora](../INSTALL_STATE.md)
+- [Wynik instalacji](../INSTALL_RESULT.yaml)
+- [FAQ](faq.md)
+- [Rozwiązywanie problemów](troubleshooting.md)
+- [Przegląd architektury](overview.md)
+- [Agent](agent.md)
+- [VM Bridge](vm-bridge.md)
+- [Ansible](ansible.md)
+- [API](api.md)
+- [Strategia](../STRATEGIA.md)
+
+---
+
 # Rozwiązywanie problemów
+
+## Diagnostyka VM i plik TWIN.yaml
+
+Po uruchomieniu `sudo bash repair.sh` generowany jest plik `/var/lib/safetytwin/TWIN.yaml` ze szczegółową diagnostyką VM. Jeśli sekcja zawiera `[BŁĄD]`, wykonaj polecenie ręcznie w konsoli VM lub dołącz zawartość pliku do zgłoszenia błędu.
+
+Skrypt automatycznie zamyka aktywne sesje konsoli VM przed próbą zebrania danych, co eliminuje częsty problem z blokadą `virsh console`.
 
 W tym dokumencie znajdziesz rozwiązania najczęstszych problemów, które mogą wystąpić podczas instalacji i używania systemu cyfrowego bliźniaka.
 

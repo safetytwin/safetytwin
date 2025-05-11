@@ -59,6 +59,65 @@ repair_cron() {
 }
 
 # Helper: napraw VM jeśli nie działa
+
+# Helper: automatyczna naprawa sieci VM
+repair_vm_network() {
+  log "[NET] Sprawdzam status sieci libvirt..."
+  if sudo virsh net-info default | grep -q 'Active: yes'; then
+    log_ok "Sieć default aktywna."
+  else
+    log_warn "Sieć default nieaktywna. Próbuję uruchomić..."
+    sudo virsh net-start default || log_err "Nie udało się uruchomić sieci default!"
+    sudo virsh net-autostart default
+  fi
+  # Sprawdź interfejs virbr0
+  log "[NET] Sprawdzam interfejs virbr0 na hoście..."
+  ip a s virbr0 || log_warn "Brak interfejsu virbr0! Sieć NAT libvirt nie działa prawidłowo."
+
+  # Sprawdź plik default.xml
+  if [ ! -f /etc/libvirt/qemu/networks/default.xml ]; then
+    log_warn "Brak pliku default.xml. Tworzę domyślną konfigurację..."
+    sudo virsh net-define /usr/share/libvirt/networks/default.xml || log_err "Nie udało się odtworzyć default.xml!"
+  fi
+
+  # Sprawdź czy działa dnsmasq
+  if ! pgrep dnsmasq >/dev/null; then
+    log_warn "dnsmasq nie działa, próbuję uruchomić..."
+    sudo systemctl restart libvirtd || log_err "Nie udało się zrestartować libvirtd!"
+  else
+    log_ok "dnsmasq działa."
+  fi
+
+  # Sprawdź plik default.leases
+  if [ ! -f /var/lib/libvirt/dnsmasq/default.leases ]; then
+    log_warn "Brak pliku default.leases — VM nie pobrała adresu IP."
+  else
+    log_ok "Plik default.leases istnieje."
+  fi
+
+  # Sprawdź czy VM ma IP
+  VM_IP=$(sudo virsh domifaddr safetytwin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+  if [ -z "$VM_IP" ]; then
+    log_warn "VM nie uzyskała adresu IP, próbuję naprawić konfigurację sieci w cloud-init..."
+    # Dodaj domyślną konfigurację netplan/cloud-init
+    if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
+      echo -e '\nnetwork:\n  version: 2\n  ethernets:\n    eth0:\n      dhcp4: true' | sudo tee -a /var/lib/safetytwin/cloud-init/user-data
+      log_ok "Dodano domyślną konfigurację sieci do user-data."
+    fi
+    # Spróbuj zrestartować VM
+    sudo virsh reset safetytwin-vm || sudo virsh reboot safetytwin-vm
+    sleep 5
+    VM_IP=$(sudo virsh domifaddr safetytwin-vm | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+    if [ -z "$VM_IP" ]; then
+      log_err "VM nadal nie uzyskała adresu IP. Wymagana ręczna diagnostyka."
+    else
+      log_ok "VM uzyskała adres IP: $VM_IP"
+    fi
+  else
+    log_ok "VM ma adres IP: $VM_IP"
+  fi
+}
+
 repair_vm() {
   if ! virsh list --all | grep -q safetytwin-vm; then
     log_warn "VM nie jest zdefiniowana. Próba definicji..."
@@ -87,11 +146,16 @@ repair_vm() {
     virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
     log_ok "Podłączono VM do sieci 'default'."
   fi
-  if ! virsh net-info default | grep -q 'Active: yes'; then
+  if virsh net-info default | grep -q 'Active: yes'; then
+    log_ok "Sieć 'default' aktywna."
+  else
     log_warn "Sieć 'default' nieaktywna. Próbuję uruchomić..."
     virsh net-start default
     virsh net-autostart default
   fi
+  log "[NET] Sprawdzam interfejs virbr0 na hoście..."
+  ip a s virbr0 || log_warn "Brak interfejsu virbr0! Sieć NAT libvirt nie działa prawidłowo."
+
   # Naprawa user-data
   if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
     log_warn "Dodaję domyślną konfigurację sieci do user-data."
@@ -121,11 +185,16 @@ repair_vm_network() {
     virsh attach-interface safetytwin-vm network default --model virtio --config --live || true
     log_ok "Podłączono VM do sieci 'default'."
   fi
-  if ! virsh net-info default | grep -q 'Active: yes'; then
+  if virsh net-info default | grep -q 'Active: yes'; then
+    log_ok "Sieć 'default' aktywna."
+  else
     log_warn "Sieć 'default' nieaktywna. Próbuję uruchomić..."
     virsh net-start default
     virsh net-autostart default
   fi
+  log "[NET] Sprawdzam interfejs virbr0 na hoście..."
+  ip a s virbr0 || log_warn "Brak interfejsu virbr0! Sieć NAT libvirt nie działa prawidłowo."
+
   # Naprawa user-data
   if ! grep -q 'network:' /var/lib/safetytwin/cloud-init/user-data; then
     log_warn "Dodaję domyślną konfigurację sieci do user-data."
@@ -203,4 +272,101 @@ repair_cron
 # VM
 repair_vm
 
-log_ok "Naprawa zakończona. Sprawdź ponownie INSTALL_RESULT.yaml."
+# Automatyczna detekcja i naprawa konfiguracji sieci VM (interfejs, netplan, cloud-init)
+fix_vm_network_config() {
+  log "[AUTO] Detekcja nazwy interfejsu sieciowego w VM..."
+  IFACE_NAME=$(sudo virsh console safetytwin-vm <<EOF | grep -E '^[0-9]+: ' | grep -v 'lo:' | head -n1 | awk -F: '{print $2}' | xargs
+sleep 2
+ip link
+exit
+EOF
+)
+  if [ -z "$IFACE_NAME" ]; then
+    log_err "Nie udało się wykryć interfejsu VM! Ręczna interwencja wymagana."
+    return 1
+  fi
+  log_ok "Wykryto interfejs VM: $IFACE_NAME"
+  # Popraw user-data jeśli trzeba
+  sudo sed -i "s/eth0:/$IFACE_NAME:/g" /var/lib/safetytwin/cloud-init/user-data
+  # Dodaj domyślną konfigurację netplan w VM
+  log "[AUTO] Tworzę domyślny plik netplan w VM dla $IFACE_NAME..."
+  sudo virsh console safetytwin-vm <<EOF
+sleep 2
+cat <<NETPLAN | sudo tee /etc/netplan/50-cloud-init.yaml
+network:
+  version: 2
+  ethernets:
+    $IFACE_NAME:
+      dhcp4: true
+NETPLAN
+netplan apply
+dhclient -v $IFACE_NAME
+exit
+EOF
+  log_ok "Wymuszono ponowną konfigurację sieci w VM ($IFACE_NAME)."
+}
+
+# Wykonaj naprawę sieci VM (host) i automatyczną detekcję/interfejs
+repair_vm_network
+fix_vm_network_config
+
+# Diagnostyka VM i zapis do TWIN.yaml
+repair_twin_vm_diagnostics() {
+  log "[TWIN] Zbieram diagnostykę z VM i zapisuję do /var/lib/safetytwin/TWIN.yaml..."
+  # Zamknij aktywną sesję virsh console jeśli istnieje
+  if sudo virsh console safetytwin-vm --force 2>/dev/null | grep -q 'Closed console session'; then
+    log_ok "Zamknięto aktywną sesję virsh console."
+  else
+    log_warn "Nie wykryto aktywnej sesji lub nie udało się zamknąć konsoli. Jeśli nadal występuje problem, zamknij ręcznie: Ctrl + ] lub sudo virsh reset safetytwin-vm."
+  fi
+  OUT=/var/lib/safetytwin/TWIN.yaml
+  echo "# Diagnostyka VM Safetytwin" > "$OUT"
+
+  run_vm_diag() {
+    local label="$1"
+    local cmd="$2"
+    echo "$label: |" >> "$OUT"
+    local result
+    result=$(sudo timeout 10 virsh console safetytwin-vm <<EOF
+sleep 2
+$cmd
+exit
+EOF
+ 2>&1 | sed 's/^/  /')
+    if echo "$result" | grep -q "Escape character is"; then
+      # Konsola się otworzyła, ale czy polecenie dało wynik?
+      local filtered=$(echo "$result" | grep -v "Escape character is" | grep -v "Connected to domain" | grep -v "Press ^"]" | grep -v "^$" | tail -n +2)
+      if [ -z "$filtered" ]; then
+        echo "  [BŁĄD] Brak danych z VM lub polecenie nie powiodło się." >> "$OUT"
+        echo "  [INSTRUKCJA] Zaloguj się ręcznie: sudo virsh console safetytwin-vm, potem: $cmd" >> "$OUT"
+        log_warn "Nie udało się zebrać danych dla: $label. Sprawdź ręcznie."
+      else
+        echo "$filtered" >> "$OUT"
+        log_ok "Zebrano dane: $label."
+      fi
+    else
+      echo "  [BŁĄD] Nie można połączyć się z VM przez virsh console." >> "$OUT"
+      echo "  [INSTRUKCJA] Zaloguj się ręcznie: sudo virsh console safetytwin-vm, potem: $cmd" >> "$OUT"
+      log_warn "Nie udało się połączyć z VM dla: $label. Sprawdź ręcznie."
+    fi
+  }
+
+  run_vm_diag "ip_a" "ip a"
+  run_vm_diag "netplan" "cat /etc/netplan/*.yaml"
+  run_vm_diag "cloud_init_log" "cat /var/log/cloud-init.log | tail -30"
+  run_vm_diag "cloud_init_status" "cloud-init status"
+  run_vm_diag "systemd_networkd_status" "systemctl status systemd-networkd"
+  run_vm_diag "hostname" "hostname"
+  run_vm_diag "resolv_conf" "cat /etc/resolv.conf"
+
+  log_ok "Zapisano diagnostykę VM do $OUT. Jeśli któraś sekcja zawiera [BŁĄD], wykonaj polecenie ręcznie w VM."
+}
+
+
+repair_twin_vm_diagnostics
+
+# Podsumowanie naprawy
+log_ok "Naprawa zakończona. Sprawdź ponownie INSTALL_RESULT.yaml oraz TWIN.yaml."
+log "--- RAPORT NAPRAWY ---"
+log "Katalogi, pliki, usługi, cron oraz sieć VM zostały sprawdzone i naprawione (jeśli było to możliwe)."
+log "Jeśli nadal występują problemy, sprawdź logi: /var/log/safetytwin/ oraz uruchom diagnose-vm-network.sh dla pogłębionej diagnostyki."

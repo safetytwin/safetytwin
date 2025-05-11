@@ -1,3 +1,22 @@
+---
+
+## 📚 Menu nawigacyjne
+
+- [README (Start)](README.md)
+- [Instrukcja instalacji](INSTALL.md)
+- [Stan instalatora](INSTALL_STATE.md)
+- [Wynik instalacji](INSTALL_RESULT.yaml)
+- [FAQ](docs/faq.md)
+- [Rozwiązywanie problemów](docs/troubleshooting.md)
+- [Przegląd architektury](docs/overview.md)
+- [Agent](docs/agent.md)
+- [VM Bridge](docs/vm-bridge.md)
+- [Ansible](docs/ansible.md)
+- [API](docs/api.md)
+- [Strategia](STRATEGIA.md)
+
+---
+
 # Deklaratywny opis stanu instalatora safetytwin
 
 Ten dokument podsumowuje, co dokładnie wykonuje aktualny instalator `install.sh` dla projektu safetytwin. Pozwala szybko przeanalizować, jakie komponenty są instalowane, konfigurowane i jakie efekty są osiągane po uruchomieniu skryptu.
@@ -68,6 +87,12 @@ Po poprawnym uruchomieniu instalatora:
 ---
 
 ## Problemy z siecią VM
+
+Nowość (2025-05):
+- Skrypt `repair.sh` automatycznie zamyka aktywne sesje konsoli VM przed diagnostyką.
+- Zbiera szczegółowe dane z VM do pliku `/var/lib/safetytwin/TWIN.yaml`.
+- Jeśli nie uda się zebrać danych, generuje instrukcje ręczne dla użytkownika.
+
 Jeśli maszyna wirtualna nie otrzymuje adresu IP:
 
 1. Uruchom skrypt diagnostyczny:
