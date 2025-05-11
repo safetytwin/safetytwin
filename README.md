@@ -20,6 +20,31 @@
 
 ---
 
+## 🆕 Nowości 2025-05
+
+- **Webowy shell do VM:**
+  - Dostęp do powłoki wybranej maszyny wirtualnej (np. `safetytwin-vm`, `test-vm`) bezpośrednio z dashboardu.
+  - Dane logowania pobierane automatycznie z pliku `.env` (`VM_USER`, `VM_PASS`).
+  - Wymagany backend terminala (np. gotty/shellinabox) na porcie 8080.
+  - Przykład pliku `.env`:
+    ```env
+    VM_USER=ubuntu
+    VM_PASS=superhaslo
+    ```
+
+- **Zaawansowana historia zmian i rollback:**
+  - Każda zmiana stanu systemu zapisywana jest jako osobny plik historyczny (`/tmp/state_YYYYMMDDHHMMSS.json`).
+  - Możliwość przeglądania diffów i rollbacku do dowolnego stanu z poziomu dashboardu.
+
+- **Automatyczne snapshoty VM i backupy:**
+  - Codzienny backup snapshotów VM (systemd timer + skrypt `snapshot-backup.sh`).
+  - Możliwość ręcznego tworzenia i przywracania snapshotów przez dashboard.
+
+- **Nowoczesne menu nawigacyjne:**
+  - Sticky-top, responsywne, szybka nawigacja po wszystkich sekcjach dashboardu (smooth scroll).
+
+---
+
 ![diagram.svg](docs/diagram.svg)
 
 Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w czasie rzeczywistym, z częstotliwością co 10 sekund. System koncentruje się na usługach działających w tle i umożliwia natychmiastowe odtworzenie stanu systemu w wirtualnym środowisku.

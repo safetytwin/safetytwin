@@ -28,7 +28,24 @@
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top" style="z-index:1030;">
-
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/dashboard">SafetyTwin</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#history">Historia zmian</a></li>
+        <li class="nav-item"><a class="nav-link" href="#snapshots">Snapshoty VM</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-agent">Logi agenta</a></li>
+        <li class="nav-item"><a class="nav-link" href="#sync">Synchronizacja</a></li>
+        <li class="nav-item"><a class="nav-link" href="#backup">Backupy</a></li>
+        <li class="nav-item"><a class="nav-link disabled" href="#">Wyloguj</a></li>
+      </ul>
+    </div>
+  </div>
 </nav>
 <!-- SHELL DO MASZYNY WIRTUALNEJ -->
 <div class="container mb-4" id="shell-vm">
@@ -37,15 +54,16 @@
       <form id="shell-form" class="row g-2 align-items-center">
         <div class="col-auto"><b>Połącz się z powłoką wybranej maszyny wirtualnej:</b></div>
         <div class="col-auto">
-          <select class="form-select" id="vm-select" name="vm_name" style="width:auto;">
-            <option value="safetytwin-vm">safetytwin-vm</option>
-            <option value="test-vm">test-vm</option>
-          </select>
+          <select class="form-select vm-select" id="vm-select-0" name="vm_name" style="width:auto;"></select>
         </div>
         <div class="col-auto">
           <button type="submit" class="btn btn-success">Połącz</button>
         </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-primary" id="create-vm-btn">Utwórz nową VM</button>
+        </div>
       </form>
+      <div id="create-vm-status" class="mt-2"></div>
       <div class="text-muted mt-2 mb-2" style="font-size:0.95em">Dane logowania są automatycznie pobierane z pliku <code>.env</code></div>
       <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
         Połącz, by uzyskać dostęp do powłoki VM
@@ -54,42 +72,86 @@
   </div>
 </div>
 
-  <div class="card">
-    <div class="card-body">
-      <form id="shell-form" class="row g-2 align-items-center">
-        <div class="col-auto"><b>Shell do maszyny wirtualnej:</b></div>
-        <div class="col-auto">
-          <select class="form-select" id="vm-select" name="vm_name" style="width:auto;">
-            <option value="safetytwin-vm">safetytwin-vm</option>
-            <option value="test-vm">test-vm</option>
-          </select>
-        </div>
-        <div class="col-auto">
-          <button type="submit" class="btn btn-success">Połącz</button>
-        </div>
-      </form>
-      <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
-        Połącz, by uzyskać dostęp do powłoki VM
-      </div>
-    </div>
-  </div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.js"></script>
 <script>
-  document.getElementById('shell-form').onsubmit = function(e) {
-    e.preventDefault();
-    var vm = document.getElementById('vm-select').value;
-    var termDiv = document.getElementById('shell-terminal');
-    termDiv.innerHTML = 'Łączenie...';
-    fetch('/shell/' + encodeURIComponent(vm)).then(r=>r.json()).then(data => {
-      if(data.url) {
-        termDiv.innerHTML = '<iframe src="'+data.url+'" style="width:100%;height:400px;border:none;"></iframe>';
-      } else {
-        termDiv.innerHTML = 'Błąd: nie udało się połączyć.';
-      }
-    }).catch(()=>{
-      termDiv.innerHTML = 'Błąd: nie udało się połączyć.';
-    });
+// --- Dynamiczna lista VM ---
+function loadVMOptions(select) {
+  fetch('/vms').then(r=>r.json()).then(data => {
+    if(data.vms) {
+      select.innerHTML = '';
+      data.vms.forEach(vm => {
+        var opt = document.createElement('option');
+        opt.value = vm;
+        opt.text = vm;
+        select.appendChild(opt);
+      });
+    }
+  });
+}
+function reloadAllVMSelects() {
+  document.querySelectorAll('.vm-select').forEach(loadVMOptions);
+}
+// --- Multi-terminal ---
+let shellIdx = 1;
+document.getElementById('add-shell-btn').onclick = function() {
+  const idx = shellIdx++;
+  const row = document.createElement('div');
+  row.className = 'multi-shell-row row g-2 align-items-center mb-2';
+  row.dataset.shellIdx = idx;
+  row.innerHTML = `<div class="col-auto"><select class="form-select vm-select" id="vm-select-${idx}" name="vm_name" style="width:auto;"></select></div><div class="col-auto"><button type="button" class="btn btn-success shell-connect-btn" data-shell-idx="${idx}"><i class="bi bi-terminal"></i> Połącz</button></div><div class="col-auto"><button type="button" class="btn btn-danger shell-remove-btn" data-shell-idx="${idx}"><i class="bi bi-x"></i></button></div>`;
+  document.getElementById('multi-shell-list').appendChild(row);
+  const shellDiv = document.createElement('div');
+  shellDiv.className = 'shell-terminal-box';
+  shellDiv.id = `shell-terminal-${idx}`;
+  shellDiv.style = 'min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center; margin-bottom:1rem';
+  shellDiv.innerHTML = 'Połącz, by uzyskać dostęp do powłoki VM';
+  document.getElementById('shell-terminal-list').appendChild(shellDiv);
+  loadVMOptions(row.querySelector('.vm-select'));
+  row.querySelector('.shell-remove-btn').onclick = function() {
+    row.remove();
+    shellDiv.remove();
   };
+  row.querySelector('.shell-connect-btn').onclick = function() {
+    connectShell(idx);
+  };
+};
+function connectShell(idx) {
+  const select = document.getElementById('vm-select-' + idx);
+  const vm = select.value;
+  const termDiv = document.getElementById('shell-terminal-' + idx);
+  termDiv.innerHTML = 'Łączenie...';
+  fetch('/shell/' + encodeURIComponent(vm)).then(r=>r.json()).then(data => {
+    if(data.url) {
+      termDiv.innerHTML = '<iframe src="'+data.url+'" style="width:100%;height:400px;border:none;"></iframe>';
+    } else if(data.error) {
+      termDiv.innerHTML = '<span style="color:#ff5555;">Błąd: '+data.error+'</span>';
+    } else {
+      termDiv.innerHTML = '<span style="color:#ff5555;">Błąd: nie udało się połączyć.</span>';
+    }
+  }).catch(()=>{
+    termDiv.innerHTML = '<span style="color:#ff5555;">Błąd: nie udało się połączyć.</span>';
+  });
+}
+// Inicjalizacja pierwszego terminala
+window.addEventListener('DOMContentLoaded', function() {
+  loadVMOptions(document.getElementById('vm-select-0'));
+  document.querySelector('.shell-connect-btn').onclick = function() { connectShell(0); };
+});
+// --- Tworzenie VM ---
+document.getElementById('create-vm-btn').onclick = function() {
+  var statusDiv = document.getElementById('create-vm-status');
+  statusDiv.innerHTML = 'Tworzenie nowej VM...';
+  fetch('/create_vm', {method: 'POST'}).then(r=>r.json()).then(data => {
+    if(data.success) {
+      statusDiv.innerHTML = '<span style="color:green;">Nowa VM utworzona: '+data.vm_name+'</span>';
+      reloadAllVMSelects();
+    } else {
+      statusDiv.innerHTML = '<span style="color:#ff5555;">Błąd tworzenia VM: '+(data.error || 'nieznany błąd')+'</span>';
+    }
+  }).catch(()=>{
+    statusDiv.innerHTML = '<span style="color:#ff5555;">Błąd: nie udało się utworzyć VM.</span>';
+  });
+};
 </script>
 
   <div class="container-fluid">
@@ -151,29 +213,63 @@
         </div>
         <div class="mb-4" id="snapshots">
             <h4>Snapshoty VM</h4>
-            <ul>
+            <ul class="list-group mb-2">
                 {% for snap in snapshots %}
-                    <li>{{ snap.name }} ({{ snap.created }})
-                        <form method="post" action="/snapshots/revert/{{ snap.name }}" style="display:inline;">
-                            <button class="btn btn-sm btn-warning">Przywróć</button>
-                        </form>
-                        <form method="post" action="/snapshots/delete/{{ snap.name }}" style="display:inline;">
-                            <button class="btn btn-sm btn-danger">Usuń</button>
-                        </form>
-                    </li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <b>{{ snap.name }}</b>
+                    {% if snap.created %}<span class="text-muted ms-2" style="font-size:0.92em;">({{ snap.created }})</span>{% endif %}
+                    {% if snap.desc %}<span class="ms-2" style="font-size:0.92em;">{{ snap.desc }}</span>{% endif %}
+                  </div>
+                  <div>
+                    <form method="post" action="/snapshots/revert/{{ snap.name }}" style="display:inline;">
+                      <button class="btn btn-sm btn-warning">Przywróć</button>
+                    </form>
+                    <form method="post" action="/snapshots/delete/{{ snap.name }}" style="display:inline;">
+                      <button class="btn btn-sm btn-danger">Usuń</button>
+                    </form>
+                    <button class="btn btn-sm btn-info" type="button" onclick="showSnapMeta('{{ snap.name }}', '{{ snap.created|default('') }}', '{{ snap.desc|default('') }}')">Podgląd</button>
+                  </div>
+                </li>
                 {% endfor %}
             </ul>
             <form method="post" action="/snapshots/create">
                 <button class="btn btn-success">Utwórz snapshot</button>
             </form>
+            <!-- Modal podglądu snapshotu -->
+            <div class="modal fade" id="snapMetaModal" tabindex="-1" aria-labelledby="snapMetaModalLabel" aria-hidden="true">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="snapMetaModalLabel">Metadane snapshotu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+                  </div>
+                  <div class="modal-body" id="snap-meta-body">
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                  </div>
+                </div>
+              </div>
+            </div>
         </div>
+        <script>
+        function showSnapMeta(name, created, desc) {
+          var html = '<b>Nazwa:</b> ' + name + '<br>';
+          if(created) html += '<b>Utworzono:</b> ' + created + '<br>';
+          if(desc) html += '<b>Opis:</b> ' + desc + '<br>';
+          document.getElementById('snap-meta-body').innerHTML = html;
+          var modal = new bootstrap.Modal(document.getElementById('snapMetaModal'));
+          modal.show();
+        }
+        </script>
         <div class="mb-4" id="sync">
             <h4>Synchronizacja usług</h4>
             <form method="post" action="/sync">
                 <button class="btn btn-primary">Wymuś synchronizację</button>
             </form>
         </div>
-        <!-- Rollback do snapshotu (pozostawione, jeśli chcesz przywracać VM) -->
+        {% if snapshots %}
         <div class="mb-4" id="backup">
             <h4>Rollback do snapshotu</h4>
             <form method="post" action="/rollback">
@@ -185,6 +281,7 @@
                 <button class="btn btn-secondary">Rollback</button>
             </form>
         </div>
+        {% endif %}
     </div>
 </body>
 </html>

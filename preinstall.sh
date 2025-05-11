@@ -401,6 +401,12 @@ if [ -n "$VM_IP" ]; then
     fi
 fi
 
+# Install gotty web terminal
+log "Installing gotty web terminal on VM..."
+scp -o StrictHostKeyChecking=no /home/$USER/gitlab/safetytwin/safetytwin/gotty_install_and_service.sh $USERNAME@$VM_IP:/tmp/
+ssh -o StrictHostKeyChecking=no $USERNAME@$VM_IP 'bash /tmp/gotty_install_and_service.sh'
+log_success "gotty web terminal should be running on http://$VM_IP:8080 (user: ubuntu, pass: ubuntu)"
+
 # Done
 log_success "VM '$VM_NAME' created successfully!"
 log_success "IP Address: $VM_IP"

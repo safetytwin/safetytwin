@@ -71,6 +71,28 @@ check_root() {
   fi
 }
 
+# --- Ensure gotty web terminal is present ---
+ensure_gotty() {
+  GOTTY_BIN="/usr/local/bin/gotty"
+  GOTTY_VERSION="1.4.0"
+  GOTTY_URL="https://github.com/yudai/gotty/releases/download/v$GOTTY_VERSION/gotty_linux_amd64.tar.gz"
+  if ! command -v gotty &>/dev/null; then
+    log_warning "gotty not found, installing..."
+    wget -O /tmp/gotty.tar.gz "$GOTTY_URL"
+    tar -xzf /tmp/gotty.tar.gz -C /tmp
+    sudo mv /tmp/gotty "$GOTTY_BIN"
+    sudo chmod +x "$GOTTY_BIN"
+    log_success "gotty installed at $GOTTY_BIN"
+  else
+    log_success "gotty already present at $GOTTY_BIN"
+  fi
+  # Copy gotty_install_and_service.sh to /var/lib/safetytwin for VM provisioning
+  mkdir -p /var/lib/safetytwin
+  cp "$(dirname "$0")/gotty_install_and_service.sh" /var/lib/safetytwin/gotty_install_and_service.sh
+  chmod +x /var/lib/safetytwin/gotty_install_and_service.sh
+  log_success "gotty_install_and_service.sh ready in /var/lib/safetytwin/"
+}
+
 # --- Ensure correct Ubuntu cloud image is present ---
 ensure_cloud_image() {
   IMG_DIR="/var/lib/safetytwin/images"
