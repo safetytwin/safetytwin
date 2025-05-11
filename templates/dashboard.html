@@ -5,15 +5,90 @@
     <title>SafetyTwin Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <style>
-        body { padding: 2rem; }
+        html { scroll-behavior: smooth; }
+        body { padding: 2rem; padding-top: 5.5rem; }
         .log-box { background: #222; color: #eee; padding: 1rem; border-radius: 6px; font-family: monospace; max-height: 300px; overflow-y: auto; }
         .diff-added { background: #d4f8e8; }
         .diff-removed { background: #ffeaea; }
     </style>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.navbar-nav .nav-link').forEach(function(link) {
+          link.addEventListener('click', function(e) {
+            var href = link.getAttribute('href');
+            if(href && href.startsWith('#')) {
+              e.preventDefault();
+              var target = document.querySelector(href);
+              if(target) target.scrollIntoView({behavior: 'smooth'});
+            }
+          });
+        });
+      });
+    </script>
 </head>
 <body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top" style="z-index:1030;">
+
+<!-- SHELL DO MASZYNY WIRTUALNEJ -->
+<div class="container mb-4" id="shell-vm">
+  <div class="card">
+    <div class="card-body">
+      <form id="shell-form" class="row g-2 align-items-center">
+        <div class="col-auto"><b>Shell do maszyny wirtualnej:</b></div>
+        <div class="col-auto">
+          <select class="form-select" id="vm-select" name="vm_name" style="width:auto;">
+            <option value="safetytwin-vm">safetytwin-vm</option>
+            <option value="test-vm">test-vm</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-success">Połącz</button>
+        </div>
+      </form>
+      <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
+        Połącz, by uzyskać dostęp do powłoki VM
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.getElementById('shell-form').onsubmit = function(e) {
+    e.preventDefault();
+    var vm = document.getElementById('vm-select').value;
+    var termDiv = document.getElementById('shell-terminal');
+    termDiv.innerHTML = 'Łączenie...';
+    fetch('/shell/' + encodeURIComponent(vm)).then(r=>r.json()).then(data => {
+      if(data.url) {
+        termDiv.innerHTML = '<iframe src="'+data.url+'" style="width:100%;height:400px;border:none;"></iframe>';
+      } else {
+        termDiv.innerHTML = 'Błąd: nie udało się połączyć.';
+      }
+    }).catch(()=>{
+      termDiv.innerHTML = 'Błąd: nie udało się połączyć.';
+    });
+  };
+</script>
+
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/dashboard">SafetyTwin</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link {% if request.url.path=='/dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="#history">Historia zmian</a></li>
+        <li class="nav-item"><a class="nav-link" href="#snapshots">Snapshoty VM</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>
+        <li class="nav-item"><a class="nav-link" href="#logs-agent">Logi agenta</a></li>
+        <li class="nav-item"><a class="nav-link" href="#sync">Synchronizacja</a></li>
+        <li class="nav-item"><a class="nav-link" href="#backup">Backupy</a></li>
+        <li class="nav-item"><a class="nav-link disabled" href="#">Wyloguj</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
     <div class="container">
-        <h1 class="mb-4">SafetyTwin Dashboard</h1>
         <div class="row mb-4">
             <div class="col-md-6">
                 <h4>Aktualny stan systemu</h4>
@@ -28,23 +103,30 @@
                 </ul>
             </div>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="history">
             <h4>Historia zmian</h4>
             <ul>
                 {% for item in history %}
-                    <li>[{{ item.timestamp }}] Stan: {{ item.id }} {% if item.current %}<b>(aktualny)</b>{% endif %}</li>
+                    <li>
+                        [{{ item.timestamp }}] <b>{{ item.id }}</b>
+                        {% if item.current %}<span class="badge bg-success">(aktualny)</span>{% endif %}
+                        <a href="/history/{{ item.id }}" class="btn btn-link btn-sm">Szczegóły/diff</a>
+                        <form method="post" action="/rollback_state/{{ item.id }}" style="display:inline;">
+                            <button class="btn btn-sm btn-warning">Rollback</button>
+                        </form>
+                    </li>
                 {% endfor %}
             </ul>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="logs-orch">
             <h4>Logi orchestratora</h4>
             <div class="log-box">{{ orchestrator_logs }}</div>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="logs-agent">
             <h4>Logi agenta</h4>
             <div class="log-box">{{ agent_logs }}</div>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="snapshots">
             <h4>Snapshoty VM</h4>
             <ul>
                 {% for snap in snapshots %}
@@ -62,13 +144,14 @@
                 <button class="btn btn-success">Utwórz snapshot</button>
             </form>
         </div>
-        <div class="mb-4">
+        <div class="mb-4" id="sync">
             <h4>Synchronizacja usług</h4>
             <form method="post" action="/sync">
                 <button class="btn btn-primary">Wymuś synchronizację</button>
             </form>
         </div>
-        <div class="mb-4">
+        <!-- Rollback do snapshotu (pozostawione, jeśli chcesz przywracać VM) -->
+        <div class="mb-4" id="backup">
             <h4>Rollback do snapshotu</h4>
             <form method="post" action="/rollback">
                 <select name="snapshot_name" class="form-select" style="width:auto;display:inline-block;">
