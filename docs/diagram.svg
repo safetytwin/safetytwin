@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 550" xmlns="http://www.w3.org/2000/svg">
+  <!-- Tło -->
+  <rect width="800" height="550" fill="#ffffff" rx="0" ry="0"/>
+
+  <!-- Tytuł -->
+  <text x="400" y="35" font-family="Arial" font-size="20" font-weight="bold" text-anchor="middle" fill="#333333">SafetyTwin: Cyfrowy Bliźniak w Czasie Rzeczywistym</text>
+  <text x="400" y="60" font-family="Arial" font-size="14" text-anchor="middle" fill="#555555">Aktualizacja stanu co 10 sekund</text>
+
+  <!-- Linia pozioma pod tytułem -->
+  <line x1="150" y1="70" x2="650" y2="70" stroke="#dddddd" stroke-width="2"/>
+
+  <!-- System fizyczny (lewa kolumna) -->
+  <rect x="50" y="100" width="280" height="160" fill="#f0f7ff" stroke="#4285f4" stroke-width="2" rx="0" ry="0"/>
+
+  <!-- Nagłówek lewej kolumny -->
+  <rect x="50" y="100" width="280" height="40" fill="#4285f4" stroke="none" rx="0" ry="0"/>
+  <text x="190" y="125" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">SYSTEM MONITOROWANY</text>
+
+  <!-- Agent w systemie fizycznym -->
+  <rect x="90" y="160" width="200" height="80" fill="white" stroke="#4285f4" stroke-width="2" rx="2" ry="2"/>
+  <text x="190" y="190" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">Agent Kolekcji Danych</text>
+  <text x="190" y="215" font-family="Arial" font-size="14" text-anchor="middle" fill="#666666">Go/Rust • co 10s</text>
+
+  <!-- System zarządzający (prawa kolumna) -->
+  <rect x="470" y="100" width="280" height="320" fill="#f4f9f4" stroke="#34a853" stroke-width="2" rx="0" ry="0"/>
+
+  <!-- Nagłówek prawej kolumny -->
+  <rect x="470" y="100" width="280" height="40" fill="#34a853" stroke="none" rx="0" ry="0"/>
+  <text x="610" y="125" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">SYSTEM ZARZĄDZAJĄCY</text>
+
+  <!-- Komponenty w systemie zarządzającym - zwiększone odstępy -->
+  <rect x="510" y="160" width="200" height="60" fill="white" stroke="#34a853" stroke-width="2" rx="2" ry="2"/>
+  <text x="610" y="195" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">VM Bridge (Python)</text>
+
+  <rect x="510" y="240" width="200" height="60" fill="white" stroke="#34a853" stroke-width="2" rx="2" ry="2"/>
+  <text x="610" y="275" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">State Store (etcd/Consul)</text>
+
+  <rect x="510" y="320" width="200" height="60" fill="white" stroke="#34a853" stroke-width="2" rx="2" ry="2"/>
+  <text x="610" y="355" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="#333333">VM Manager (libvirt)</text>
+
+  <!-- Cyfrowy Bliźniak (dolna sekcja) -->
+  <rect x="175" y="440" width="450" height="100" fill="#e8f0fe" stroke="#4285f4" stroke-width="2" rx="0" ry="0"/>
+  <rect x="175" y="440" width="450" height="40" fill="#4285f4" stroke="none" rx="0" ry="0"/>
+  <text x="400" y="465" font-family="Arial" font-size="16" font-weight="bold" text-anchor="middle" fill="white">CYFROWY BLIŹNIAK (KVM/QEMU)</text>
+
+  <rect x="250" y="490" width="300" height="40" fill="white" stroke="#4285f4" stroke-width="2" rx="2" ry="2"/>
+  <text x="400" y="515" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle" fill="#333333">Replika usług, procesów i konfiguracji</text>
+
+  <!-- Strzałki -->
+  <!-- Pozioma strzałka Agent -> VM Bridge -->
+  <path d="M290 190 L400 190 L400 190 L510 190" stroke="#666666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="400" y="180" font-family="Arial" font-size="12" text-anchor="middle" fill="#666666">Dane o stanie systemu</text>
+
+  <!-- Pionowa strzałka VM Bridge -> State Store -->
+  <path d="M610 220 L610 240" stroke="#666666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="630" y="230" font-family="Arial" font-size="12" text-anchor="start" fill="#666666">Zapisuje stan</text>
+
+  <!-- Pionowa strzałka State Store -> VM Manager -->
+  <path d="M610 300 L610 320" stroke="#666666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="630" y="310" font-family="Arial" font-size="12" text-anchor="start" fill="#666666">Informuje o zmianach</text>
+
+  <!-- Strzałka VM Manager -> Digital Twin -->
+  <path d="M610 380 L610 420 L400 420 L400 440" stroke="#666666" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="620" y="410" font-family="Arial" font-size="12" text-anchor="start" fill="#666666">Aktualizuje snapshot VM</text>
+
+  <!-- Markery strzałek -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666666"/>
+    </marker>
+  </defs>
+</svg>

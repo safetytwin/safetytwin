@@ -20,6 +20,7 @@
 
 ---
 
+![diagram.svg](docs/diagram.svg)
 
 Projekt umożliwia tworzenie i aktualizację cyfrowego bliźniaka komputera w czasie rzeczywistym, z częstotliwością co 10 sekund. System koncentruje się na usługach działających w tle i umożliwia natychmiastowe odtworzenie stanu systemu w wirtualnym środowisku.
 
