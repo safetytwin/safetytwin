@@ -111,7 +111,8 @@ check_requirements() {
     ubuntu|debian)
       log "Instaluję dodatkowe narzędzia: whois, sudo, net-tools, iproute2, cloud-utils, expect, lsof, jq, sed, grep, awk, python3, python3-pip, python3-venv, curl, ansible, libvirt-clients, libvirt-daemon-system, qemu-kvm, qemu-utils, golang..."
       sudo apt-get update
-      sudo apt-get install -y whois sudo net-tools iproute2 cloud-utils expect lsof jq sed grep gawk python3 python3-pip python3-venv curl ansible libvirt-clients libvirt-daemon-system qemu-kvm qemu-utils golang
+      sudo apt-get install -y gawk jq curl ansible libvirt-clients qemu-utils python3-fastapi python3-uvicorn python3-jinja2 python3-multipart || \
+        pip3 install fastapi uvicorn jinja2 python-multipart expect lsof jq sed grep gawk python3 python3-pip python3-venv curl ansible libvirt-clients libvirt-daemon-system qemu-kvm qemu-utils golang
       log_success "Zainstalowano wszystkie wymagane narzędzia systemowe (awk → gawk)."
       ;;
     centos|rhel|fedora)
