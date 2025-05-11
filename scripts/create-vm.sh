@@ -1,5 +1,11 @@
 #!/bin/bash
 # Automated multi-VM creation with snapshotting and health checks
+#
+# [Permission Fix]
+# If you get 'Permission denied' errors, run:
+#   sudo chown -R $USER:$USER /var/lib/safetytwin/images /var/lib/safetytwin/cloud-init
+#   sudo rm -f /tmp/create-vm.log
+# This ensures you can create images and log files as your user.
 set -e
 
 # === CONFIGURATION ===
@@ -24,7 +30,11 @@ for VM in "${VM_NAMES[@]}"; do
         log "ERROR: Base image $BASE_IMAGE not found. Aborting."
         exit 1
     fi
-    qemu-img create -f qcow2 -b "$BASE_IMAGE" "$VM_IMAGE" 20G
+    if [[ "$BASE_IMAGE" == "$VM_IMAGE" ]]; then
+        log "ERROR: Base image and VM image paths are identical! Skipping $VM."
+        continue
+    fi
+    qemu-img create -f qcow2 -b "$BASE_IMAGE" -F qcow2 "$VM_IMAGE" 20G
 
     log "Defining and starting $VM..."
     virt-install --name "$VM" \

@@ -22,6 +22,15 @@
 
 ## 🧹 Resetowanie i Rekreacja Środowiska (Automatyczne czyszczenie VM/libvirt)
 
+### 🛠️ Troubleshooting: Permission Denied Errors
+If you get `Permission denied` errors when running `create-vm.sh`, fix it with:
+
+```bash
+sudo chown -R $USER:$USER /var/lib/safetytwin/images /var/lib/safetytwin/cloud-init
+sudo rm -f /tmp/create-vm.log
+```
+This ensures your user can create VM images and log files.
+
 Aby całkowicie wyczyścić środowisko (usuwając wszystkie maszyny wirtualne, snapshoty, pule storage i sieci libvirt) oraz zbudować je od nowa:
 
 ```bash
