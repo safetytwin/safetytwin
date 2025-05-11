@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 )
 
@@ -13,7 +14,7 @@ import (
 func SaveStateToFile(state *models.SystemState, stateDir string) error {
 	// Utwórz katalog stanów, jeśli nie istnieje
 	if err := os.MkdirAll(stateDir, 0755); err != nil {
-		return fmt.Errorf("nie można utworzyć katalogu stanów: %v", err)
+		return fmt.Errorf("nie można utworzyć katalogu stanów %s: %w", stateDir, err)
 	}
 
 	// Wygeneruj nazwę pliku na podstawie znacznika czasu
@@ -23,17 +24,17 @@ func SaveStateToFile(state *models.SystemState, stateDir string) error {
 	// Serializuj stan do JSON
 	jsonData, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
-		return fmt.Errorf("błąd podczas serializacji stanu: %v", err)
+		return fmt.Errorf("błąd podczas serializacji stanu: %w", err)
 	}
 
 	// Zapisz do pliku
 	if err := os.WriteFile(stateFile, jsonData, 0644); err != nil {
-		return fmt.Errorf("błąd podczas zapisywania stanu do pliku: %v", err)
+		return fmt.Errorf("błąd podczas zapisywania stanu do pliku %s: %w", stateFile, err)
 	}
 
 	// Usuń stare pliki stanów, jeśli jest ich za dużo
 	if err := cleanupOldStateFiles(stateDir, 10); err != nil {
-		return fmt.Errorf("błąd podczas czyszczenia starych plików stanów: %v", err)
+		return fmt.Errorf("błąd podczas czyszczenia starych plików stanów w %s: %w", stateDir, err)
 	}
 
 	return nil
@@ -44,56 +45,43 @@ func cleanupOldStateFiles(stateDir string, maxFiles int) error {
 	// Pobierz listę plików w katalogu stanów
 	files, err := os.ReadDir(stateDir)
 	if err != nil {
-		return err
+		return fmt.Errorf("nie można odczytać katalogu stanów %s: %w", stateDir, err)
 	}
 
 	// Filtruj tylko pliki stanów
-	stateFiles := []string{}
-	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
-			stateFiles = append(stateFiles, filepath.Join(stateDir, file.Name()))
-		}
-	}
-
-	// Jeśli liczba plików nie przekracza maksymalnej, nie rób nic
-	if len(stateFiles) <= maxFiles {
-		return nil
-	}
-
-	// Pobierz informacje o plikach
 	type fileInfo struct {
 		path    string
 		modTime time.Time
 	}
-	fileInfos := make([]fileInfo, 0, len(stateFiles))
-	for _, path := range stateFiles {
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
+	
+	var fileInfos []fileInfo
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
+			path := filepath.Join(stateDir, file.Name())
+			info, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			fileInfos = append(fileInfos, fileInfo{path, info.ModTime()})
 		}
-		fileInfos = append(fileInfos, fileInfo{path, info.ModTime()})
+	}
+
+	// Jeśli liczba plików nie przekracza maksymalnej, nie rób nic
+	if len(fileInfos) <= maxFiles {
+		return nil
 	}
 
 	// Sortuj pliki według czasu modyfikacji (od najstarszego do najnowszego)
-	sortFileInfos(fileInfos)
+	sort.Slice(fileInfos, func(i, j int) bool {
+		return fileInfos[i].modTime.Before(fileInfos[j].modTime)
+	})
 
 	// Usuń najstarsze pliki, pozostawiając tylko maxFiles najnowszych
 	for i := 0; i < len(fileInfos)-maxFiles; i++ {
 		if err := os.Remove(fileInfos[i].path); err != nil {
-			return err
+			return fmt.Errorf("nie można usunąć starego pliku stanu %s: %w", fileInfos[i].path, err)
 		}
 	}
 
 	return nil
-}
-
-// sortFileInfos sortuje pliki według czasu modyfikacji (od najstarszego do najnowszego)
-func sortFileInfos(files []fileInfo) {
-	for i := 0; i < len(files); i++ {
-		for j := i + 1; j < len(files); j++ {
-			if files[i].modTime.After(files[j].modTime) {
-				files[i], files[j] = files[j], files[i]
-			}
-		}
-	}
 }

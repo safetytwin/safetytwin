@@ -1,5 +1,5 @@
 ```
-digital-twin-system/
+safetytwin/
 ├── install.sh                          # Główny skrypt instalacyjny
 │
 ├── agent/                              # Agent zbierania danych (Go)
