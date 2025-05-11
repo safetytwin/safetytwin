@@ -47,6 +47,51 @@ safetytwin_installation:
         Sprawdź konsolę VM:
           virsh console safetytwin-vm
         oraz konfigurację sieci (NAT/DHCP/mostek) w libvirt.
+
+  files:
+    config:
+      - path: "/etc/safetytwin/agent-config.json"
+      - path: "/etc/safetytwin/bridge-config.yaml"
+      - path: "/etc/safetytwin/ssh/id_rsa"
+      - path: "/etc/safetytwin/ssh/id_rsa.pub"
+      - path: "/etc/safetytwin/inventory.yml"
+    systemd_units:
+      - path: "/etc/systemd/system/safetytwin-agent.service"
+      - path: "/etc/systemd/system/safetytwin-bridge.service"
+    cloud_init:
+      - path: "/var/lib/safetytwin/cloud-init/user-data"
+      - path: "/var/lib/safetytwin/cloud-init/meta-data"
+    vm:
+      - path: "/var/lib/safetytwin/images/ubuntu-base.img"
+      - path: "/var/lib/safetytwin/vm-definition.xml"
+    logs:
+      - path: "/var/log/safetytwin/agent.log"
+      - path: "/var/log/safetytwin/bridge.log"
+      - path: "/var/log/safetytwin/storage.log"
+      - path: "/var/log/cloud-init.log"
+      - path: "/var/log/cloud-init-output.log"
+      - path: "/var/log/syslog"
+      - path: "/var/log/messages"
+    cron:
+      - path: "(crontab -l | grep monitor_storage.sh)"
+
+  files_status:
+$(for f in "/etc/safetytwin/agent-config.json" "/etc/safetytwin/bridge-config.yaml" "/etc/safetytwin/ssh/id_rsa" "/etc/safetytwin/ssh/id_rsa.pub" "/etc/safetytwin/inventory.yml" "/etc/systemd/system/safetytwin-agent.service" "/etc/systemd/system/safetytwin-bridge.service" "/var/lib/safetytwin/cloud-init/user-data" "/var/lib/safetytwin/cloud-init/meta-data" "/var/lib/safetytwin/images/ubuntu-base.img" "/var/lib/safetytwin/vm-definition.xml" "/var/log/safetytwin/agent.log" "/var/log/safetytwin/bridge.log" "/var/log/safetytwin/storage.log" "/var/log/cloud-init.log" "/var/log/cloud-init-output.log" "/var/log/syslog" "/var/log/messages"; do
+  if [ -e "$f" ]; then
+    echo "    - path: $f"
+    echo "      exists: true"
+    echo "      mtime: $(stat -c %y "$f" 2>/dev/null)"
+    echo "      size: $(stat -c %s "$f" 2>/dev/null)"
+    if [[ "$f" == *.log ]]; then
+      echo "      tail: |"
+      tail -n 10 "$f" 2>/dev/null | sed 's/^/        /'
+    fi
+  else
+    echo "    - path: $f"
+    echo "      exists: false"
+  fi
+ done)
+
   directories:
     - path: "/var/lib/safetytwin/"
       exists: $(path_exists /var/lib/safetytwin/)
@@ -92,7 +137,26 @@ safetytwin_installation:
     recommendations:
       - Sprawdź logi usług i konsolę VM jeśli są problemy z połączeniem SSH.
       - Zweryfikuj katalogi i status usług.
+
+  diagnostics:
+    commands:
+      - sudo journalctl -u safetytwin-agent
+      - sudo journalctl -u safetytwin-bridge
+      - sudo systemctl status safetytwin-agent safetytwin-bridge
+      - sudo virsh console safetytwin-vm
+      - sudo virsh domiflist safetytwin-vm
+      - sudo virsh net-list --all
+      - sudo virsh net-info default
+      - sudo cat /var/log/cloud-init.log
+      - sudo cat /var/log/cloud-init-output.log
+      - sudo cat /var/log/safetytwin/agent.log
+      - sudo cat /var/log/safetytwin/bridge.log
+      - sudo cat /var/log/safetytwin/storage.log
+      - sudo cat /var/log/syslog
+      - sudo cat /var/log/messages
+      - sudo crontab -l | grep monitor_storage.sh
 EOF
+
 
 chmod 644 "$RESULT_FILE"
 echo "Wygenerowano $RESULT_FILE."
