@@ -238,13 +238,52 @@ document.getElementById('create-vm-btn').onclick = function() {
         <li class="nav-item"><a class="nav-link" href="#logs-orch">Logi orchestratora</a></li>
         <li class="nav-item"><a class="nav-link" href="#logs-agent">Logi agenta</a></li>
         <li class="nav-item"><a class="nav-link" href="#sync">Synchronizacja</a></li>
-        <li class="nav-item"><a class="nav-link" href="#backup">Backupy</a></li>
-        <li class="nav-item"><a class="nav-link disabled" href="#">Wyloguj</a></li>
-      </ul>
+    </div>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3" id="vm-row">
+      <!-- VMs will be rendered here -->
     </div>
   </div>
-</nav>
-    <div class="container">
+  <script>
+    // Example: Render VMs with shell for demo (should be done server-side or via API in production)
+    const vms = [
+      {name: 'safetytwin-vm-2', ip: '192.168.122.53'},
+      {name: 'safetytwin-vm', ip: '192.168.122.235'},
+      {name: 'basic-test-vm', ip: '192.168.122.174'}
+    ];
+    const vmRow = document.getElementById('vm-row');
+    vms.forEach(vm => {
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.innerHTML = `
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">${vm.name} <span class="text-muted" style="font-size:0.95em;">(${vm.ip})</span></h5>
+            <div class="mb-2">
+              <button class="btn btn-primary btn-sm me-2 mb-2 w-100">Zainstaluj pakiet</button>
+              <button id="testAllBtn" class="btn btn-success w-100 w-md-auto" style="max-width:320px;">Test All</button>
+            </div>
+            <div class="ratio ratio-16x9 border rounded bg-dark mb-2">
+              <iframe src="/shell/${vm.name}" style="width:100%;height:100%;border:none;background:#181818;min-height:220px;" allowfullscreen onerror="this.parentNode.innerHTML='<div class=\'text-danger p-3\'>Shell unavailable</div>'"></iframe>
+            </div>
+          </div>
+        </div>
+      `;
+      vmRow.appendChild(col);
+    });
+  </script>
+  <style>
+    @media (max-width: 576px) {
+      h1 { font-size: 1.5rem; }
+      .card-title { font-size: 1rem; }
+      .btn, .btn-sm { font-size: 0.95em; }
+    }
+    .ratio-16x9 { aspect-ratio: 16/9; }
+    iframe { min-height: 180px; }
+  </style>
+</body>
+</html>
+
+        <div class="container">
         <div class="row mb-4">
             <div class="col-md-6">
                 <h4>Aktualny stan systemu</h4>

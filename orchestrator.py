@@ -1,5 +1,9 @@
 from fastapi import FastAPI, Request, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi import BackgroundTasks
+import threading
+import time
+
 from fastapi.templating import Jinja2Templates
 import subprocess, os
 from dotenv import load_dotenv
@@ -137,17 +141,46 @@ def create_vm():
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+# --- Run Tests Endpoint ---
+@app.post("/run_tests")
+def run_tests():
+    import subprocess
+    import os
+    script_path = os.path.join(os.path.dirname(__file__), "tests.sh")
+    if not os.path.isfile(script_path):
+        return JSONResponse({"success": False, "output": "tests.sh not found"}, status_code=404)
+    try:
+        proc = subprocess.run(["bash", script_path], capture_output=True, text=True, timeout=300)
+        return JSONResponse({
+            "success": proc.returncode == 0,
+            "output": proc.stdout + proc.stderr,
+            "returncode": proc.returncode
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "output": str(e)}, status_code=500)
+
 # --- Dashboard ---
 @app.get("/vm_grid", response_class=HTMLResponse)
 def vm_grid(request: Request):
-    # Pobierz listę VM
+    # Pobierz listę VM i ich IP
     vms = []
     try:
         out = subprocess.check_output(['virsh', 'list', '--all'], encoding='utf-8', errors='ignore')
         for line in out.splitlines()[2:]:
             parts = line.strip().split()
             if len(parts) >= 2:
-                vms.append(parts[1])
+                vm_name = parts[1]
+                ip = None
+                try:
+                    ip_out = subprocess.check_output(['virsh', 'domifaddr', vm_name], encoding='utf-8', errors='ignore')
+                    for ip_line in ip_out.splitlines()[2:]:
+                        ip_parts = ip_line.strip().split()
+                        if len(ip_parts) >= 4 and ip_parts[3].count('.') == 3:
+                            ip = ip_parts[3].split('/')[0]
+                            break
+                except Exception:
+                    ip = None
+                vms.append({'name': vm_name, 'ip': ip})
         # Jeśli nie ma żadnych VM, utwórz domyślną
         if not vms:
             subprocess.run(['bash', 'scripts/create-vm.sh'], cwd=os.path.dirname(__file__), check=True)
@@ -155,7 +188,8 @@ def vm_grid(request: Request):
             for line in out.splitlines()[2:]:
                 parts = line.strip().split()
                 if len(parts) >= 2:
-                    vms.append(parts[1])
+                    vm_name = parts[1]
+                    vms.append({'name': vm_name, 'ip': None})
     except Exception:
         pass
     # Pobierz snapshoty dla każdej VM (max 3 najnowsze)
@@ -163,7 +197,7 @@ def vm_grid(request: Request):
     for vm in vms:
         snaps = []
         try:
-            out = subprocess.check_output(['virsh', 'snapshot-list', vm, '--tree'], encoding='utf-8', errors='ignore')
+            out = subprocess.check_output(['virsh', 'snapshot-list', vm['name'], '--tree'], encoding='utf-8', errors='ignore')
             for line in out.splitlines():
                 if line.strip() and not line.startswith("Name") and not line.startswith("-"):
                     parts = line.split()
@@ -171,22 +205,35 @@ def vm_grid(request: Request):
                     snaps.append(name)
         except Exception:
             pass
-        vm_snaps[vm] = snaps[:3]
+        vm_snaps[vm['name']] = snaps[:3]
     return templates.TemplateResponse("vm_grid.html", {"request": request, "vms": vms, "vm_snaps": vm_snaps})
 
 @app.post("/install_pkg/{vm_name}")
 def install_pkg(vm_name: str, pkg: str = None):
-    # Zainstaluj pakiet przez SSH na VM
+    # Zainstaluj pakiet przez SSH na VM z użyciem aktualnego IP
     try:
         # Wczytaj dane logowania z .env
         env_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env'))
         load_dotenv(dotenv_path=env_path)
         user = os.getenv('VM_USER', 'ubuntu')
         password = os.getenv('VM_PASS', 'ubuntu')
-        # Instalacja przez sshpass+ssh
+        # Pobierz aktualny IP dla VM
+        ip = None
+        try:
+            ip_out = subprocess.check_output(['virsh', 'domifaddr', vm_name], encoding='utf-8', errors='ignore')
+            for ip_line in ip_out.splitlines()[2:]:
+                ip_parts = ip_line.strip().split()
+                if len(ip_parts) >= 4 and ip_parts[3].count('.') == 3:
+                    ip = ip_parts[3].split('/')[0]
+                    break
+        except Exception:
+            ip = None
+        if not ip:
+            return {"success": False, "error": f"Nie znaleziono aktualnego IP dla VM {vm_name}"}
+        # Instalacja przez sshpass+ssh na IP
         cmd = [
             'sshpass', '-p', password,
-            'ssh', '-o', 'StrictHostKeyChecking=no', f'{user}@{vm_name}',
+            'ssh', '-o', 'StrictHostKeyChecking=no', f'{user}@{ip}',
             f'sudo apt-get update && sudo apt-get install -y {pkg}'
         ]
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)

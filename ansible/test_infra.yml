@@ -1,0 +1,111 @@
+---
+- name: SafetyTwin infrastructure validation
+  hosts: vms
+  gather_facts: yes
+  tasks:
+    - name: Ping all VMs
+      ansible.builtin.ping:
+
+    - name: Check if nginx is installed
+      ansible.builtin.shell: which nginx
+      register: nginx_path
+      ignore_errors: yes
+
+    - name: Show nginx install result
+      ansible.builtin.debug:
+        msg: "nginx path: {{ nginx_path.stdout if nginx_path.rc == 0 else 'not installed' }}"
+
+    - name: Ensure SSH is working
+      ansible.builtin.shell: echo SSH_OK
+      register: ssh_test
+
+    - name: Show SSH test result
+      ansible.builtin.debug:
+        msg: "SSH_OK output: {{ ssh_test.stdout }}"
+
+    - name: Check HTTP port 80 is open
+      ansible.builtin.uri:
+        url: http://{{ inventory_hostname }}:80
+        return_content: no
+        status_code: 200
+      register: http_check
+      ignore_errors: yes
+
+    - name: Show HTTP check result
+      ansible.builtin.debug:
+        msg: "HTTP status: {{ http_check.status | default('error') }}"
+
+    - name: Check disk space on /
+      ansible.builtin.shell: df -h /
+      register: disk_space
+
+    - name: Show disk space
+      ansible.builtin.debug:
+        msg: "Disk space: {{ disk_space.stdout_lines }}"
+
+    - name: Check memory usage
+      ansible.builtin.shell: free -h
+      register: mem_usage
+
+    - name: Show memory usage
+      ansible.builtin.debug:
+        msg: "Memory usage: {{ mem_usage.stdout_lines }}"
+
+    - name: Check CPU load
+      ansible.builtin.shell: uptime
+      register: cpu_load
+
+    - name: Show CPU load
+      ansible.builtin.debug:
+        msg: "CPU load: {{ cpu_load.stdout }}"
+
+    - name: Check if nginx process is running
+      ansible.builtin.shell: pgrep nginx
+      register: nginx_proc
+      ignore_errors: yes
+
+    - name: Show nginx process check
+      ansible.builtin.debug:
+        msg: "nginx process: {{ 'running' if nginx_proc.rc == 0 else 'not running' }}"
+
+    - name: Check if sshd process is running
+      ansible.builtin.shell: pgrep sshd
+      register: sshd_proc
+      ignore_errors: yes
+
+    - name: Show sshd process check
+      ansible.builtin.debug:
+        msg: "sshd process: {{ 'running' if sshd_proc.rc == 0 else 'not running' }}"
+
+    - name: Check open ports (22, 80)
+      ansible.builtin.shell: ss -ltn | grep -E ':22 |:80 '
+      register: open_ports
+      ignore_errors: yes
+
+    - name: Show open ports
+      ansible.builtin.debug:
+        msg: "Open ports: {{ open_ports.stdout_lines if open_ports.rc == 0 else 'none' }}"
+
+    - name: Check /var/log is writable
+      ansible.builtin.file:
+        path: /var/log/test_ansible.log
+        state: touch
+        mode: '0644'
+      register: log_writable
+      ignore_errors: yes
+
+    - name: Show /var/log writable
+      ansible.builtin.debug:
+        msg: "/var/log writable: {{ 'yes' if log_writable is not failed else 'no' }}"
+
+    - name: Check /tmp is writable
+      ansible.builtin.file:
+        path: /tmp/test_ansible.log
+        state: touch
+        mode: '0644'
+      register: tmp_writable
+      ignore_errors: yes
+
+    - name: Show /tmp writable
+      ansible.builtin.debug:
+        msg: "/tmp writable: {{ 'yes' if tmp_writable is not failed else 'no' }}"
