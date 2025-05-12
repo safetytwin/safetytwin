@@ -33,16 +33,35 @@ if [ -f "$AGENT_UNIT" ] && [ -f "$AGENT_SH" ]; then
   fi
 fi
 
-# Restart usług orchestratora i agenta (jeśli istnieją)
-for svc in services/orchestrator.service services/safetytwin-agent.service services/agent_send_state.service; do
+# Sprawdź i napraw usługi przed uruchomieniem dashboardu
+services=(orchestrator.service safetytwin-agent.service agent_send_state.service)
+all_ok=true
+for svc in "${services[@]}"; do
   if systemctl list-unit-files | grep -q "$svc"; then
-    echo "[INFO] Restartuję usługę: $svc"
-    sudo systemctl restart "$svc"
-    sleep 1
+    status=$(systemctl is-active "$svc")
+    if [ "$status" != "active" ]; then
+      echo "[WARN] $svc nie działa (status: $status). Próba naprawy..."
+      sudo systemctl restart "$svc"
+      sleep 2
+      status2=$(systemctl is-active "$svc")
+      if [ "$status2" != "active" ]; then
+        echo "[ERROR] $svc nadal nie działa. Sprawdź logi: journalctl -u $svc"
+        all_ok=false
+      else
+        echo "[OK] $svc naprawiony."
+      fi
+    else
+      echo "[OK] $svc działa."
+    fi
   else
     echo "[INFO] Usługa $svc nie istnieje, pomijam."
   fi
 done
+
+if [ "$all_ok" != true ]; then
+  echo "[FATAL] Nie wszystkie usługi działają poprawnie. Przerywam uruchamianie dashboardu."
+  exit 2
+fi
 
 # Sprawdź, czy orchestrator już działa
 if lsof -i:8000 | grep LISTEN >/dev/null; then

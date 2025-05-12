@@ -49,31 +49,117 @@
   </div>
 </nav>
 <div class="container-fluid">
-  <!-- SHELL DO MASZYNY WIRTUALNEJ -->
-  <section class="container mb-4" id="shell-vm">
-    <div class="card">
-      <div class="card-body">
-        <h4 class="mb-3">Połączenie z powłoką VM</h4>
-        <form id="shell-form" class="row g-2 align-items-center">
-          <div class="col-auto"><b>Wybierz maszynę wirtualną:</b></div>
-          <div class="col-auto">
-            <select class="form-select vm-select" id="vm-select-0" name="vm_name" style="width:auto;"></select>
+  <!-- STATUSY USŁUG -->
+  <section class="row mb-4" id="service-status-row">
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-3">
+            <span class="fw-bold me-2">Status usług:</span>
+            <span id="status-orchestrator" class="badge bg-secondary">orchestrator: ...</span>
+            <span id="status-agent" class="badge bg-secondary">agent: ...</span>
+            <span id="status-sendstate" class="badge bg-secondary">send-state: ...</span>
           </div>
-          <div class="col-auto">
-            <button type="submit" class="btn btn-success">Połącz</button>
-          </div>
-          <div class="col-auto">
-            <button type="button" class="btn btn-primary" id="create-vm-btn">Utwórz nową VM</button>
-          </div>
-        </form>
-        <div id="create-vm-status" class="mt-2"></div>
-        <div class="text-muted mt-2 mb-2" style="font-size:0.95em">Dane logowania są automatycznie pobierane z pliku <code>.env</code></div>
-        <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
-          Połącz, by uzyskać dostęp do powłoki VM
+          <span class="text-muted small">Ostatnia aktualizacja: <span id="status-last-update">--:--</span></span>
         </div>
       </div>
     </div>
   </section>
+  <!-- SHELL DO MASZYNY WIRTUALNEJ -->
+  <section class="row mb-4" id="shell-vm">
+    <div class="col-lg-7 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Połączenie z powłoką VM</h4>
+          <form id="shell-form" class="row g-2 align-items-center">
+            <div class="col-auto"><b>Wybierz maszynę wirtualną:</b></div>
+            <div class="col-auto">
+              <select class="form-select vm-select" id="vm-select-0" name="vm_name" style="width:auto;"></select>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-success">Połącz</button>
+            </div>
+            <div class="col-auto">
+              <button type="button" class="btn btn-primary" id="create-vm-btn">Utwórz nową VM</button>
+            </div>
+          </form>
+          <div id="create-vm-status" class="mt-2"></div>
+          <div class="text-muted mt-2 mb-2" style="font-size:0.95em">Dane logowania są automatycznie pobierane z pliku <code>.env</code></div>
+          <div class="mt-3" id="shell-terminal" style="min-height:200px; border:1px solid #aaa; border-radius:6px; background:#181818; color:#eee; display:flex; align-items:center; justify-content:center;">
+            Połącz, by uzyskać dostęp do powłoki VM
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Backupy</h4>
+          <div id="backup-content">
+            <!-- Tutaj pojawią się backupy maszyn wirtualnych lub systemu. -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- HISTORIA ZMIAN, SNAPSHOTY, LOGI, SYNCHRONIZACJA -->
+  <section class="row mb-4">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Historia zmian</h4>
+          <div id="history-content">
+            <!-- Tutaj pojawi się historia zmian systemu. -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Snapshoty VM</h4>
+          <div id="snapshots-content">
+            <!-- Tutaj pojawią się snapshoty maszyn wirtualnych. -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="row mb-4">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Logi orchestratora</h4>
+          <div class="log-box" id="orchestrator-logs">
+            <!-- Logi orchestratora -->
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Logi agenta</h4>
+          <div class="log-box" id="agent-logs">
+            <!-- Logi agenta -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="row mb-4">
+    <div class="col-12">
+      <div class="card h-100">
+        <div class="card-body">
+          <h4 class="mb-3">Synchronizacja usług</h4>
+          <form method="post" action="/sync">
+            <button class="btn btn-primary">Wymuś synchronizację</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- HISTORIA ZMIAN -->
   <section class="container mb-4" id="history">
     <div class="card">

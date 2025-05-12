@@ -15,9 +15,22 @@ ISO="$CLOUD_INIT_DIR/cloud-init.iso"
 
 # 1. Stop and remove existing VM (ignore errors if not present)
 echo "[restart.sh] Shutting down and removing old VM if exists..."
-sudo virsh shutdown "$VM_NAME" || true
-sleep 10
-sudo virsh undefine --nvram "$VM_NAME" || true
+if sudo virsh dominfo "$VM_NAME" &>/dev/null; then
+  sudo virsh shutdown "$VM_NAME" || true
+  SNAPSHOTS=$(sudo virsh snapshot-list "$VM_NAME" --name 2>/dev/null | grep -v '^$' | grep -v '^Name')
+  if [ -n "$SNAPSHOTS" ]; then
+    echo "[restart.sh] Deleting snapshots for VM: $VM_NAME"
+    for SNAP in $SNAPSHOTS; do
+      echo "  - Deleting snapshot: $SNAP"
+      sudo virsh snapshot-delete "$VM_NAME" "$SNAP" --metadata || true
+    done
+  fi
+  sudo virsh undefine "$VM_NAME" --remove-all-storage 2>/dev/null || true
+  sleep 10
+  sudo virsh undefine --nvram "$VM_NAME" || true
+else
+  echo "[restart.sh] No existing VM named $VM_NAME found, skipping shutdown/undefine."
+fi
 
 # 2. Regenerate cloud-init user-data and meta-data
 echo "[restart.sh] Regenerating cloud-init user-data and meta-data..."
@@ -68,7 +81,7 @@ sudo virt-install --name "$VM_NAME" \
   --memory 2048 \
   --vcpus 2 \
   --disk "$BASE_IMG",device=disk,bus=virtio \
-  --disk "$ISO",device=cdrom,bus=ide \
+  --disk "$ISO",device=cdrom,bus=sata \
   --os-variant ubuntu20.04 \
   --virt-type kvm \
   --graphics none \

@@ -206,7 +206,43 @@ def vm_grid(request: Request):
         except Exception:
             pass
         vm_snaps[vm['name']] = snaps[:3]
-    return templates.TemplateResponse("vm_grid.html", {"request": request, "vms": vms, "vm_snaps": vm_snaps})
+    # Pobierz logi orchestratora i agenta (ostatnie 100 linii)
+    def tail_logfile(path, lines=100):
+        try:
+            with open(path, 'r') as f:
+                return ''.join(f.readlines()[-lines:])
+        except Exception as e:
+            return f"Błąd czytania logów: {e}"
+    orchestrator_logs = tail_logfile('/var/log/syslog', 100)
+    agent_logs = tail_logfile('/var/log/syslog', 100)
+    return templates.TemplateResponse("vm_grid.html", {
+        "request": request,
+        "vms": vms,
+        "vm_snaps": vm_snaps,
+        "orchestrator_logs": orchestrator_logs,
+        "agent_logs": agent_logs
+    })
+
+@app.get("/logs/orchestrator")
+def logs_orchestrator():
+    def tail_logfile(path, lines=100):
+        try:
+            with open(path, 'r') as f:
+                return ''.join(f.readlines()[-lines:])
+        except Exception as e:
+            return f"Błąd czytania logów: {e}"
+    return tail_logfile('/var/log/syslog', 100)
+
+@app.get("/logs/agent")
+def logs_agent():
+    def tail_logfile(path, lines=100):
+        try:
+            with open(path, 'r') as f:
+                return ''.join(f.readlines()[-lines:])
+        except Exception as e:
+            return f"Błąd czytania logów: {e}"
+    return tail_logfile('/var/log/syslog', 100)
+
 
 @app.post("/install_pkg/{vm_name}")
 def install_pkg(vm_name: str, pkg: str = None):
