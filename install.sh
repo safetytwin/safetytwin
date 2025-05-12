@@ -49,6 +49,16 @@ log() {
   echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
+wait_for_apt_lock() {
+  local msg="Czekam na zwolnienie blokady APT (inny proces instaluje pakiety)..."
+  while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+    log_warning "$msg"
+    sleep 5
+  done
+  log_success "APT lock zwolniony, kontynuuję instalację."
+}
+
+
 log_success() {
   echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
@@ -179,6 +189,10 @@ check_requirements() {
   PKGS=""
   case "$DISTRO" in
      ubuntu|debian)
+      wait_for_apt_lock  # Czekaj na zwolnienie locka przed update
+      apt-get update
+      wait_for_apt_lock  # Czekaj na zwolnienie locka przed install
+      apt-get install -y sudo curl wget jq lsb-release net-tools sshpass libvirt-clients libvirt-daemon-system qemu-kvm virtinst genisoimage cloud-image-utils whois
       PKG_UPDATE="apt-get update"
       PKG_INSTALL="apt-get install -y"
       PKGS="libvirt-dev libvirt-daemon-system libvirt-clients qemu-kvm python3 python3-dev python3-pip gcc make pkg-config genisoimage"
@@ -713,7 +727,11 @@ EOF
 
   # Pobierz bazowy obraz
   log "Pobieranie bazowego obrazu Ubuntu..."
+  if [ ! -f "$STATE_DIR/images/ubuntu-base.img" ]; then
   wget -O "$STATE_DIR/images/ubuntu-base.img" "https://cloud-images.ubuntu.com/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img"
+else
+  echo "Obraz ubuntu-base.img już istnieje, pomijam pobieranie."
+fi
 
   # Dostosuj obraz
   log "Dostosowywanie obrazu..."
