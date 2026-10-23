@@ -73,6 +73,8 @@ sys.exit(result.returncode)
             "SENDER_CAPTURE": str(self.directory / "curl-argv-bytes"),
             "SENDER_COLLECTOR_FAILURE": "0",
             "SENDER_FIXTURE_BYTES": "16",
+            "NO_PROXY": "127.0.0.1,localhost",
+            "no_proxy": "127.0.0.1,localhost",
         }
         self.assertTrue(self.environment["SENDER_REAL_CURL"], "curl is required")
         self.assertIsNotNone(shutil.which("jq"), "jq is required")
