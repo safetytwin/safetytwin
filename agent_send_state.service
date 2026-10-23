@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=oneshot
 User=root
-WorkingDirectory=$HOME/safetytwin/safetytwin
-ExecStart=/bin/bash $HOME/safetytwin/safetytwin/agent_send_state.sh
+WorkingDirectory=/home/tom/gitlab/safetytwin/safetytwin
+ExecStart=/bin/bash /home/tom/gitlab/safetytwin/safetytwin/agent_send_state.sh
 Restart=no
 
 [Install]
