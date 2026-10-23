@@ -66,7 +66,10 @@ sys.stderr.buffer.write(result.stderr)
 sys.exit(result.returncode)
 """)
         self.environment = {
-            **os.environ,
+            **{
+                key: value for key, value in os.environ.items()
+                if key not in {"BASH_ENV", "ENV"} and not key.startswith("BASH_FUNC_")
+            },
             "PATH": str(self.bin) + os.pathsep + os.environ["PATH"],
             "SENDER_TEST_TARGET": f"http://127.0.0.1:{self.server.server_port}/state",
             "SENDER_REAL_CURL": shutil.which("curl") or "",
@@ -86,8 +89,23 @@ sys.exit(result.returncode)
 
     def write_command(self, name, source):
         path = self.bin / name
-        path.write_text("#!" + sys.executable + "\n" + source)
+        path.write_text(
+            "#!" + sys.executable + "\nimport sys\n"
+            "if sys.argv[1:] == ['--sender-fixture-check']:\n"
+            f"    print({name!r})\n    sys.exit(0)\n" + source
+        )
         path.chmod(0o755)
+        # On noexec mounts Bash may search past an unusable PATH entry and
+        # invoke the real collector. Probe absolute wrappers before the sender.
+        try:
+            probe = subprocess.run(
+                [str(path), "--sender-fixture-check"], capture_output=True,
+                text=True, timeout=5, check=False,
+            )
+        except OSError as error:
+            self.fail(f"Cannot execute isolated {name} fixture: {error}")
+        self.assertEqual(probe.returncode, 0, probe.stderr)
+        self.assertEqual(probe.stdout.strip(), name)
 
     def run_sender(self):
         return subprocess.run(
